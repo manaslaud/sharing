@@ -42,8 +42,14 @@ export default async function CalendarPage() {
     string,
     (
       | { kind: "journal"; title: string; href: string; shared?: boolean }
-      | { kind: "reminder"; title: string; when: Date }
-      | { kind: "event"; title: string; when: Date }
+      | {
+          kind: "reminder";
+          id: string;
+          title: string;
+          when: Date;
+          sharedSpaceId: string | null;
+        }
+      | { kind: "event"; id: string; title: string; when: Date }
     )[]
   > = {};
 
@@ -68,13 +74,24 @@ export default async function CalendarPage() {
     const date = toDateParam(reminder.dueAt);
     const { items, marker } = bucket(date);
     marker.reminder = true;
-    items.push({ kind: "reminder", title: reminder.title, when: reminder.dueAt });
+    items.push({
+      kind: "reminder",
+      id: reminder.id,
+      title: reminder.title,
+      when: reminder.dueAt,
+      sharedSpaceId: reminder.sharedSpaceId,
+    });
   }
   for (const event of events) {
     const date = toDateParam(event.startAt);
     const { items, marker } = bucket(date);
     marker.event = true;
-    items.push({ kind: "event", title: event.title, when: event.startAt });
+    items.push({
+      kind: "event",
+      id: event.id,
+      title: event.title,
+      when: event.startAt,
+    });
   }
 
   return (

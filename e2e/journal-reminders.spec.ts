@@ -38,4 +38,23 @@ test("journal date navigation and reminder complete", async ({ page }) => {
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByText("Call mom")).toBeVisible();
   await page.getByRole("button", { name: "Complete" }).click();
+  await expect(page.getByText("Call mom")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Create" }).first().click();
+  await page.getByRole("button", { name: "New Reminder" }).click();
+  await page.getByLabel("Title").fill("Delete this reminder");
+  await page.getByLabel("When").fill(local);
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByText("Delete this reminder")).toBeVisible();
+  await page.getByRole("button", { name: "Delete" }).click();
+  await expect(page.getByText("Delete this reminder")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Create" }).first().click();
+  await page.getByRole("button", { name: "New Event" }).click();
+  await page.getByLabel("Title").fill("Delete this event");
+  await page.getByLabel("Starts").fill(local);
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByText("Delete this event")).toBeVisible();
+  await page.getByRole("button", { name: "Delete" }).click();
+  await expect(page.getByText("Delete this event")).toHaveCount(0);
 });

@@ -2,12 +2,13 @@ import Link from "next/link";
 import { EmptyState, PageHeader, VisibilityBadge } from "@/components/ui-extras";
 import { prisma } from "@/lib/db";
 import { journalAccessWhere, noteAccessWhere, reminderAccessWhere } from "@/lib/authz";
-import { formatNoteTime, formatLongDate, toDateParam } from "@/lib/dates";
+import { formatLongDate, toDateParam } from "@/lib/dates";
 import { greetingForHour, hourInTimeZone } from "@/lib/names";
 import { previewText } from "@/lib/content";
 import { getSpaceContext } from "@/lib/session";
 import { createNoteAction } from "@/lib/actions/notes";
 import { HomeQuickActions } from "@/components/home-quick-actions";
+import { EventRow } from "@/components/events/event-row";
 import { ReminderRow } from "@/components/reminders/reminder-row";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { DEFAULT_TIMEZONE } from "@/lib/timezones";
@@ -111,16 +112,7 @@ export default async function HomePage() {
               <ReminderRow key={reminder.id} reminder={reminder} />
             ))}
             {events.map((event) => (
-              <Link
-                key={event.id}
-                href="/calendar"
-                className="rounded-2xl border bg-card px-4 py-3"
-              >
-                <p className="font-medium">📅 {event.title}</p>
-                <p className="text-sm text-muted-foreground">
-                  {formatNoteTime(event.startAt)}
-                </p>
-              </Link>
+              <EventRow key={event.id} event={event} />
             ))}
           </div>
         )}

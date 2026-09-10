@@ -13,7 +13,9 @@ import {
   startOfWeek,
 } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { formatNoteTime, toDateParam } from "@/lib/dates";
+import { EventRow } from "@/components/events/event-row";
+import { ReminderRow } from "@/components/reminders/reminder-row";
+import { toDateParam } from "@/lib/dates";
 
 type Marker = {
   date: string;
@@ -24,8 +26,14 @@ type Marker = {
 
 type DayItem =
   | { kind: "journal"; title: string; href: string; shared?: boolean }
-  | { kind: "reminder"; title: string; when: Date }
-  | { kind: "event"; title: string; when: Date };
+  | {
+      kind: "reminder";
+      id: string;
+      title: string;
+      when: Date;
+      sharedSpaceId: string | null;
+    }
+  | { kind: "event"; id: string; title: string; when: Date };
 
 export function MonthCalendar({
   initialMonth,
@@ -111,29 +119,37 @@ export function MonthCalendar({
           {selectedItems.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nothing on this day.</p>
           ) : (
-            selectedItems.map((item, index) => (
-              <div key={`${item.kind}-${index}`} className="rounded-2xl border bg-card px-4 py-3">
-                {item.kind === "journal" ? (
+            selectedItems.map((item, index) =>
+              item.kind === "journal" ? (
+                <div
+                  key={`${item.kind}-${index}`}
+                  className="rounded-2xl border bg-card px-4 py-3"
+                >
                   <Link href={item.href}>
                     ❤️ {item.shared ? "Shared journal" : "Journal"} · {item.title}
                   </Link>
-                ) : item.kind === "reminder" ? (
-                  <p>
-                    🔔 {item.title}
-                    <span className="ml-2 text-sm text-muted-foreground">
-                      {formatNoteTime(item.when)}
-                    </span>
-                  </p>
-                ) : (
-                  <p>
-                    📅 {item.title}
-                    <span className="ml-2 text-sm text-muted-foreground">
-                      {formatNoteTime(item.when)}
-                    </span>
-                  </p>
-                )}
-              </div>
-            ))
+                </div>
+              ) : item.kind === "reminder" ? (
+                <ReminderRow
+                  key={item.id}
+                  reminder={{
+                    id: item.id,
+                    title: item.title,
+                    dueAt: item.when,
+                    sharedSpaceId: item.sharedSpaceId,
+                  }}
+                />
+              ) : (
+                <EventRow
+                  key={item.id}
+                  event={{
+                    id: item.id,
+                    title: item.title,
+                    startAt: item.when,
+                  }}
+                />
+              ),
+            )
           )}
         </div>
       </section>

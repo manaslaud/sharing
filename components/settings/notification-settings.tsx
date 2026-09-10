@@ -150,8 +150,8 @@ export function NotificationSettings({ initial }: { initial: Prefs }) {
     <section className="rounded-3xl border bg-card p-5">
       <h2 className="font-serif text-xl">Notifications</h2>
       <div className="mt-4 grid gap-4">
-        <div className="flex items-center justify-between gap-4">
-          <div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
             <Label>Push notifications</Label>
             <p className="text-xs text-muted-foreground">
               {!pushSupported
@@ -164,6 +164,7 @@ export function NotificationSettings({ initial }: { initial: Prefs }) {
           {needsDeviceSetup ? (
             <Button
               size="sm"
+              className="shrink-0"
               loading={busy}
               disabled={!pushSupported || controlsBusy}
               onClick={enablePush}
@@ -173,6 +174,7 @@ export function NotificationSettings({ initial }: { initial: Prefs }) {
           ) : (
             <Button
               size="sm"
+              className="shrink-0"
               variant="secondary"
               loading={busy}
               disabled={controlsBusy}

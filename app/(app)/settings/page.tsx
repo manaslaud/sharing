@@ -49,7 +49,7 @@ export default async function SettingsPage() {
   const spaceIsFull = isSpaceFull(ctx.space.members.length);
 
   return (
-    <div className="grid gap-8">
+    <div className="grid min-w-0 gap-8">
       <PageHeader title="Settings" />
 
       <section className="rounded-3xl border bg-card p-5">
@@ -105,7 +105,7 @@ export default async function SettingsPage() {
               <p className="mt-1 text-sm text-muted-foreground">
                 Share this code so one other person can join {ctx.space.name}.
               </p>
-              <p className="mt-3 font-mono text-2xl tracking-[0.3em]">
+              <p className="mt-3 break-all font-mono text-2xl tracking-[0.2em]">
                 {ctx.space.inviteCode}
               </p>
               {isOwner ? (

@@ -116,24 +116,26 @@ export function AppShell({
         </Link>
       </aside>
 
-      <div className={cn("md:pl-64", hideChrome ? "" : "pb-24 md:pb-0")}>
+      <div className={cn("min-w-0 md:pl-64", hideChrome ? "" : "pb-24 md:pb-0")}>
         {!hideChrome && (
-          <header className="sticky top-0 z-30 flex items-center justify-end gap-2 border-b border-border bg-background/90 px-4 py-3 backdrop-blur md:hidden">
-            <Link href="/search" className="rounded-full p-2 text-muted-foreground">
-              <Search className="size-5" />
-            </Link>
-            <Link href="/notifications" className="relative rounded-full p-2 text-muted-foreground">
-              <Bell className="size-5" />
-              {unreadCount > 0 ? (
-                <span className="absolute top-1 right-1 size-2 rounded-full bg-primary" />
-              ) : null}
-            </Link>
-            <Link href="/settings" className="rounded-full p-2 text-muted-foreground">
-              <Settings className="size-5" />
-            </Link>
+          <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur md:hidden">
+            <div className="mx-auto flex w-full max-w-3xl items-center justify-end gap-1 px-2 py-2">
+              <Link href="/search" className="rounded-full p-2 text-muted-foreground">
+                <Search className="size-5" />
+              </Link>
+              <Link href="/notifications" className="relative rounded-full p-2 text-muted-foreground">
+                <Bell className="size-5" />
+                {unreadCount > 0 ? (
+                  <span className="absolute top-1 right-1 size-2 rounded-full bg-primary" />
+                ) : null}
+              </Link>
+              <Link href="/settings" className="rounded-full p-2 text-muted-foreground">
+                <Settings className="size-5" />
+              </Link>
+            </div>
           </header>
         )}
-        <main className={cn(hideChrome ? "" : "mx-auto w-full max-w-3xl px-4 py-6 md:px-8 md:py-8")}>
+        <main className={cn(hideChrome ? "" : "mx-auto w-full min-w-0 max-w-3xl overflow-x-clip px-4 py-6 md:px-8 md:py-8")}>
           {children}
         </main>
       </div>

@@ -46,25 +46,19 @@ export function SpaceDetails({
   const hasPartner = members.some((member) => member.userId !== currentUserId);
 
   return (
-    <section className="rounded-3xl border bg-card p-5">
+    <section className="min-w-0 overflow-hidden rounded-3xl border bg-card p-5">
       <h2 className="font-serif text-xl">Space</h2>
       <p className="mt-1 text-sm text-muted-foreground">
         Details for this shared space.
       </p>
 
       <dl className="mt-4 grid gap-3 text-sm">
-        <div className="flex items-baseline justify-between gap-4">
-          <dt className="text-muted-foreground">Name</dt>
-          <dd className="font-medium text-right">{spaceName}</dd>
-        </div>
-        <div className="flex items-baseline justify-between gap-4">
-          <dt className="text-muted-foreground">Created</dt>
-          <dd>{formatLongDate(createdAt)}</dd>
-        </div>
-        <div className="flex items-baseline justify-between gap-4">
-          <dt className="text-muted-foreground">Your role</dt>
-          <dd>{currentRole === "OWNER" ? "Owner" : "Member"}</dd>
-        </div>
+        <DetailRow label="Name" value={spaceName} emphasize />
+        <DetailRow label="Created" value={formatLongDate(createdAt)} />
+        <DetailRow
+          label="Your role"
+          value={currentRole === "OWNER" ? "Owner" : "Member"}
+        />
       </dl>
 
       <h3 className="mt-6 text-sm font-medium">People</h3>
@@ -72,8 +66,8 @@ export function SpaceDetails({
         {members.map((member) => {
           const isYou = member.userId === currentUserId;
           return (
-            <li key={member.userId} className="flex items-center gap-3">
-              <Avatar>
+            <li key={member.userId} className="flex min-w-0 items-center gap-3">
+              <Avatar className="shrink-0">
                 <AvatarFallback>{initials(member.name)}</AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
@@ -84,11 +78,16 @@ export function SpaceDetails({
                   ) : null}
                 </p>
                 <p className="truncate text-xs text-muted-foreground">
-                  {member.email ?? "No email"} · Joined{" "}
-                  {formatLongDate(member.joinedAt)}
+                  {member.email ?? "No email"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Joined {formatLongDate(member.joinedAt)}
                 </p>
               </div>
-              <Badge variant={member.role === "OWNER" ? "default" : "secondary"}>
+              <Badge
+                className="shrink-0"
+                variant={member.role === "OWNER" ? "default" : "secondary"}
+              >
                 {member.role === "OWNER" ? "Owner" : "Member"}
               </Badge>
             </li>
@@ -120,5 +119,30 @@ export function SpaceDetails({
 
       {children}
     </section>
+  );
+}
+
+function DetailRow({
+  label,
+  value,
+  emphasize = false,
+}: {
+  label: string;
+  value: string;
+  emphasize?: boolean;
+}) {
+  return (
+    <div className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-3">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd
+        className={
+          emphasize
+            ? "min-w-0 text-right font-medium break-words"
+            : "min-w-0 text-right break-words"
+        }
+      >
+        {value}
+      </dd>
+    </div>
   );
 }

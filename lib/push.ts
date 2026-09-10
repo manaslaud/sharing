@@ -98,6 +98,7 @@ export async function dispatchDueNotifications() {
       OR: [{ lastNotifiedAt: null }, { recurrence: { not: "NONE" } }],
     },
     include: {
+      creator: { select: { name: true } },
       sharedSpace: { include: { members: true } },
     },
   });
@@ -118,15 +119,17 @@ export async function dispatchDueNotifications() {
     ].filter(Boolean);
 
     if (needsNotify) {
-      await notifyReminderDue({
+      const copy = await notifyReminderDue({
         userIds,
+        creatorName: reminder.creator.name,
         title: reminder.title,
+        description: reminder.description,
         reminderId: reminder.id,
       });
 
       const results = await pushToUsers(userIds, {
-        title: "Reminder",
-        body: reminder.title,
+        title: copy.title,
+        body: copy.body,
         url: "/",
       });
 

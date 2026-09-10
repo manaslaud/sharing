@@ -45,6 +45,65 @@ export function nextOccurrence(
   return next;
 }
 
+/** First occurrence at or after `at`. */
+export function upcomingOccurrence(
+  from: Date,
+  recurrence: RecurrenceRule,
+  at: Date,
+  seriesStart?: Date,
+): Date | null {
+  const floor = seriesStart ?? from;
+  if (from.getTime() >= at.getTime() && from.getTime() >= floor.getTime()) {
+    return from;
+  }
+  const next = nextOccurrence(from, recurrence, at);
+  if (next && next.getTime() >= floor.getTime()) return next;
+  return null;
+}
+
+/** Last occurrence strictly before `before`. */
+export function previousOccurrence(
+  from: Date,
+  recurrence: RecurrenceRule,
+  before: Date,
+  seriesStart?: Date,
+): Date | null {
+  const floor = seriesStart ?? from;
+  if (recurrence === "NONE") {
+    return from.getTime() < before.getTime() && from.getTime() >= floor.getTime()
+      ? from
+      : null;
+  }
+
+  if (from.getTime() < before.getTime()) {
+    let cursor: Date | null =
+      from.getTime() >= floor.getTime()
+        ? from
+        : nextOccurrence(from, recurrence, new Date(floor.getTime() - 1));
+    if (!cursor || cursor.getTime() < floor.getTime() || cursor.getTime() >= before.getTime()) {
+      return null;
+    }
+    let steps = 0;
+    while (cursor && steps < 4000) {
+      const following = nextDueAt(cursor, recurrence);
+      if (!following || following.getTime() >= before.getTime()) return cursor;
+      cursor = following;
+      steps += 1;
+    }
+    return cursor;
+  }
+
+  let back = previousDueAt(from, recurrence);
+  let steps = 0;
+  while (back && steps < 4000) {
+    if (back.getTime() < floor.getTime()) return null;
+    if (back.getTime() < before.getTime()) return back;
+    back = previousDueAt(back, recurrence);
+    steps += 1;
+  }
+  return null;
+}
+
 export function previousDueAt(
   from: Date,
   recurrence: RecurrenceRule,

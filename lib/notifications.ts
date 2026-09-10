@@ -132,18 +132,35 @@ export async function notifySharedEdit(args: {
   });
 }
 
+function reminderDueCopy(args: {
+  creatorName: string | null | undefined;
+  title: string;
+  description?: string | null;
+}) {
+  const notes = args.description?.trim();
+  return {
+    title: `A reminder from ${firstName(args.creatorName)}`,
+    body: notes ? `${args.title}\n${notes}` : args.title,
+  };
+}
+
 export async function notifyReminderDue(args: {
   userIds: string[];
+  creatorName: string | null | undefined;
   title: string;
+  description?: string | null;
   reminderId: string;
 }) {
+  const copy = reminderDueCopy(args);
   await createForUsers({
     userIds: [...new Set(args.userIds)],
     type: "REMINDER_DUE",
-    title: `Reminder: ${args.title}`,
+    title: copy.title,
+    body: copy.body,
     reminderId: args.reminderId,
     preference: "reminders",
   });
+  return copy;
 }
 
 export async function notifyEventSoon(args: {

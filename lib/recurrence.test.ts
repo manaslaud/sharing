@@ -3,6 +3,8 @@ import {
   nextDueAt,
   nextOccurrence,
   occurrencesInRange,
+  previousOccurrence,
+  upcomingOccurrence,
 } from "./recurrence";
 
 function iso(date: Date) {
@@ -42,6 +44,54 @@ describe("recurrence", () => {
     expect(
       nextOccurrence(from, "WEEKLY", new Date("2026-09-20T12:00:00Z"))?.toISOString(),
     ).toBe("2026-09-24T18:00:00.000Z");
+  });
+
+  it("picks the next upcoming occurrence without skipping a future due date", () => {
+    const dueAt = new Date("2026-09-10T18:00:00Z");
+    expect(
+      upcomingOccurrence(dueAt, "NONE", new Date("2026-09-10T17:00:00Z"))?.toISOString(),
+    ).toBe("2026-09-10T18:00:00.000Z");
+    expect(
+      upcomingOccurrence(dueAt, "NONE", new Date("2026-09-10T19:00:00Z")),
+    ).toBeNull();
+    expect(
+      upcomingOccurrence(dueAt, "DAILY", new Date("2026-09-10T17:00:00Z"))?.toISOString(),
+    ).toBe("2026-09-10T18:00:00.000Z");
+    expect(
+      upcomingOccurrence(dueAt, "DAILY", new Date("2026-09-10T19:00:00Z"))?.toISOString(),
+    ).toBe("2026-09-11T18:00:00.000Z");
+  });
+
+  it("picks the most recent previous occurrence", () => {
+    const dueAt = new Date("2026-09-10T18:00:00Z");
+    expect(
+      previousOccurrence(dueAt, "NONE", new Date("2026-09-10T19:00:00Z"))?.toISOString(),
+    ).toBe("2026-09-10T18:00:00.000Z");
+    expect(
+      previousOccurrence(dueAt, "NONE", new Date("2026-09-10T17:00:00Z")),
+    ).toBeNull();
+    expect(
+      previousOccurrence(dueAt, "DAILY", new Date("2026-09-13T10:00:00Z"))?.toISOString(),
+    ).toBe("2026-09-12T18:00:00.000Z");
+    expect(
+      previousOccurrence(dueAt, "WEEKLY", new Date("2026-09-20T12:00:00Z"))?.toISOString(),
+    ).toBe("2026-09-17T18:00:00.000Z");
+    expect(
+      previousOccurrence(
+        dueAt,
+        "DAILY",
+        new Date("2026-09-13T10:00:00Z"),
+        new Date("2026-09-11T00:00:00Z"),
+      )?.toISOString(),
+    ).toBe("2026-09-12T18:00:00.000Z");
+    expect(
+      previousOccurrence(
+        dueAt,
+        "DAILY",
+        new Date("2026-09-10T17:00:00Z"),
+        dueAt,
+      ),
+    ).toBeNull();
   });
 
   it("lists every matching day in a calendar range", () => {

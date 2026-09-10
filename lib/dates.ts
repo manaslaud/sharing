@@ -1,9 +1,17 @@
-import { format, formatDistanceToNow, isToday, isTomorrow, parseISO } from "date-fns";
+import {
+  format,
+  formatDistanceToNow,
+  isToday,
+  isTomorrow,
+  isYesterday,
+  parseISO,
+} from "date-fns";
 
 export function formatNoteTime(date: Date | string) {
   const value = typeof date === "string" ? parseISO(date) : date;
   if (isToday(value)) return format(value, "h:mm a");
   if (isTomorrow(value)) return `Tomorrow · ${format(value, "h:mm a")}`;
+  if (isYesterday(value)) return `Yesterday · ${format(value, "h:mm a")}`;
   return format(value, "MMM d · h:mm a");
 }
 

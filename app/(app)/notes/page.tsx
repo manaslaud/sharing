@@ -4,19 +4,18 @@ import { EmptyState, PageHeader, VisibilityBadge } from "@/components/ui-extras"
 import { listAccessibleNotes, createNoteAction } from "@/lib/actions/notes";
 import { previewText } from "@/lib/content";
 import { formatRelative } from "@/lib/dates";
+import { normalizeTagName } from "@/lib/tags";
 
 export default async function NotesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tag?: string }>;
+  searchParams: Promise<{ q?: string; tag?: string }>;
 }) {
-  const { tag } = await searchParams;
-  const notes = await listAccessibleNotes(false);
-  const filtered = tag
-    ? notes.filter((note) =>
-        note.tags.some((item) => item.tag.name === tag.replace(/^#/, "")),
-      )
-    : notes;
+  const { q, tag } = await searchParams;
+  const query = q?.trim() ?? "";
+  const notes = await listAccessibleNotes(false, { q: query, tag });
+  const activeTag = tag ? normalizeTagName(tag) : "";
+  const searching = Boolean(query || activeTag);
 
   return (
     <div>
@@ -33,41 +32,78 @@ export default async function NotesPage({
           </div>
         }
       />
-      {filtered.length === 0 ? (
+      <form className="mb-4">
+        <input
+          name="q"
+          defaultValue={query}
+          placeholder="Search notes and tags…"
+          className="h-10 w-full rounded-xl border border-input bg-card px-3 text-sm"
+        />
+        {activeTag ? <input type="hidden" name="tag" value={activeTag} /> : null}
+      </form>
+      {activeTag ? (
+        <p className="mb-4 text-sm text-muted-foreground">
+          Tagged{" "}
+          <Link
+            href={query ? `/notes?q=${encodeURIComponent(query)}` : "/notes"}
+            className="rounded-full bg-secondary px-2.5 py-1 text-foreground hover:bg-secondary/80"
+          >
+            #{activeTag} ×
+          </Link>
+        </p>
+      ) : null}
+      {notes.length === 0 ? (
         <EmptyState
-          title="No notes yet"
-          description="Start writing something important."
+          title={searching ? "No matching notes" : "No notes yet"}
+          description={
+            searching
+              ? "Try a different title, body, or tag."
+              : "Start writing something important."
+          }
           action={
-            <form action={createNoteAction}>
-              <SubmitButton pendingLabel="Creating…">Create note</SubmitButton>
-            </form>
+            searching ? undefined : (
+              <form action={createNoteAction}>
+                <SubmitButton pendingLabel="Creating…">Create note</SubmitButton>
+              </form>
+            )
           }
         />
       ) : (
         <div className="grid gap-2">
-          {filtered.map((note) => (
-            <Link
+          {notes.map((note) => (
+            <article
               key={note.id}
-              href={`/notes/${note.id}`}
               className="rounded-2xl border bg-card px-4 py-3"
             >
-              <div className="flex items-center justify-between gap-3">
-                <p className="font-medium">
-                  {note.isPinned ? "⭐ " : "📝 "}
-                  {note.title || "Untitled"}
+              <Link href={`/notes/${note.id}`} className="block">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-medium">
+                    {note.isPinned ? "⭐ " : "📝 "}
+                    {note.title || "Untitled"}
+                  </p>
+                  <VisibilityBadge visibility={note.visibility} />
+                </div>
+                <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                  {previewText(note.content) || "Empty note"}
                 </p>
-                <VisibilityBadge visibility={note.visibility} />
-              </div>
-              <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                {previewText(note.content) || "Empty note"}
-              </p>
+              </Link>
               <p className="mt-2 text-xs text-muted-foreground">
                 {formatRelative(note.updatedAt)}
-                {note.tags.length
-                  ? ` · ${note.tags.map((item) => `#${item.tag.name}`).join(" ")}`
-                  : ""}
+                {note.tags.map((item) => (
+                  <Link
+                    key={item.tag.id}
+                    href={`/notes?tag=${encodeURIComponent(item.tag.name)}`}
+                    className={
+                      item.tag.name === activeTag
+                        ? "ml-1 font-medium text-foreground"
+                        : "ml-1 hover:text-foreground"
+                    }
+                  >
+                    #{item.tag.name}
+                  </Link>
+                ))}
               </p>
-            </Link>
+            </article>
           ))}
         </div>
       )}

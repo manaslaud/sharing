@@ -291,12 +291,46 @@ export async function setNoteTagsAction(input: unknown) {
   return { ok: true };
 }
 
-export async function listAccessibleNotes(archived = false) {
+export async function listAccessibleNotes(
+  archived = false,
+  filters?: { q?: string; tag?: string },
+) {
   const ctx = await getSpaceContext();
+  const query = filters?.q?.trim() ?? "";
+  const tagQuery = query ? normalizeTagName(query) : "";
+  const tagFilter = filters?.tag ? normalizeTagName(filters.tag) : "";
+
   return prisma.note.findMany({
     where: {
       ...noteAccessWhere(ctx.userId, ctx.spaceIds),
       isArchived: archived,
+      ...(query
+        ? {
+            OR: [
+              { title: { contains: query, mode: "insensitive" } },
+              { contentText: { contains: query, mode: "insensitive" } },
+              ...(tagQuery
+                ? [
+                    {
+                      tags: {
+                        some: {
+                          tag: {
+                            name: {
+                              contains: tagQuery,
+                              mode: "insensitive" as const,
+                            },
+                          },
+                        },
+                      },
+                    },
+                  ]
+                : []),
+            ],
+          }
+        : {}),
+      ...(tagFilter
+        ? { tags: { some: { tag: { name: tagFilter } } } }
+        : {}),
     },
     include: {
       tags: { include: { tag: true } },

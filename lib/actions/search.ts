@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { journalAccessWhere, noteAccessWhere } from "@/lib/authz";
 import { getSpaceContext } from "@/lib/session";
+import { normalizeTagName } from "@/lib/tags";
 import { searchSchema } from "@/lib/validations/search";
 
 export async function searchContent(input: unknown) {
@@ -14,6 +15,8 @@ export async function searchContent(input: unknown) {
   const ctx = await getSpaceContext();
   const { q, filter, tag } = parsed.data;
   const query = q.trim();
+  const tagQuery = normalizeTagName(query);
+  const tagFilter = tag ? normalizeTagName(tag) : "";
 
   const noteWhere = {
     ...noteAccessWhere(ctx.userId, ctx.spaceIds),
@@ -22,13 +25,29 @@ export async function searchContent(input: unknown) {
           OR: [
             { title: { contains: query, mode: "insensitive" as const } },
             { contentText: { contains: query, mode: "insensitive" as const } },
+            ...(tagQuery
+              ? [
+                  {
+                    tags: {
+                      some: {
+                        tag: {
+                          name: {
+                            contains: tagQuery,
+                            mode: "insensitive" as const,
+                          },
+                        },
+                      },
+                    },
+                  },
+                ]
+              : []),
           ],
         }
       : {}),
     ...(filter === "shared" ? { visibility: "SHARED" as const } : {}),
     ...(filter === "private" ? { visibility: "PRIVATE" as const } : {}),
-    ...(tag
-      ? { tags: { some: { tag: { name: tag.replace(/^#/, "").toLowerCase() } } } }
+    ...(tagFilter
+      ? { tags: { some: { tag: { name: tagFilter } } } }
       : {}),
   };
 
@@ -44,10 +63,10 @@ export async function searchContent(input: unknown) {
       : {}),
     ...(filter === "shared" ? { visibility: "SHARED" as const } : {}),
     ...(filter === "private" ? { visibility: "PRIVATE" as const } : {}),
-    ...(tag
+    ...(tagFilter
       ? {
           tags: {
-            some: { tag: { name: tag.replace(/^#/, "").toLowerCase() } },
+            some: { tag: { name: tagFilter } },
           },
         }
       : {}),

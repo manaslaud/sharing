@@ -20,7 +20,7 @@ export default async function NotePage({
     notFound();
   }
 
-  const [activities, revisions] = await Promise.all([
+  const [activities, revisions, suggestedTags] = await Promise.all([
     prisma.activity.findMany({
       where: { noteId: note.id },
       include: { actor: { select: { id: true, name: true } } },
@@ -33,6 +33,11 @@ export default async function NotePage({
       orderBy: { createdAt: "desc" },
       take: 20,
     }),
+    prisma.tag.findMany({
+      where: { createdById: ctx.userId },
+      select: { name: true },
+      orderBy: { name: "asc" },
+    }),
   ]);
 
   return (
@@ -42,6 +47,7 @@ export default async function NotePage({
       currentUserId={ctx.userId}
       activities={activities}
       revisions={revisions}
+      suggestedTags={suggestedTags.map((tag) => tag.name)}
     />
   );
 }

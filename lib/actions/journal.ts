@@ -19,6 +19,7 @@ import {
 } from "@/lib/validations/journal";
 import { notifySharedEdit, notifySharedItem } from "@/lib/notifications";
 import { setTagsSchema } from "@/lib/validations/note";
+import { isValidTagName, normalizeTagName } from "@/lib/tags";
 
 function parseDate(date: string) {
   return new Date(`${date}T00:00:00.000Z`);
@@ -219,7 +220,9 @@ export async function setJournalTagsAction(input: unknown) {
 
   const names = [
     ...new Set(
-      parsed.data.tags.map((tag) => tag.replace(/^#/, "").toLowerCase()),
+      parsed.data.tags
+        .map((tag) => normalizeTagName(tag))
+        .filter(isValidTagName),
     ),
   ];
   const tags = await Promise.all(

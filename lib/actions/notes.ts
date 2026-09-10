@@ -19,6 +19,7 @@ import {
   updateNoteSchema,
 } from "@/lib/validations/note";
 import { notifySharedEdit, notifySharedItem } from "@/lib/notifications";
+import { isValidTagName, normalizeTagName } from "@/lib/tags";
 
 async function loadNoteForUser(id: string) {
   const ctx = await getSpaceContext();
@@ -260,7 +261,9 @@ export async function setNoteTagsAction(input: unknown) {
 
   const names = [
     ...new Set(
-      parsed.data.tags.map((tag) => tag.replace(/^#/, "").toLowerCase()),
+      parsed.data.tags
+        .map((tag) => normalizeTagName(tag))
+        .filter(isValidTagName),
     ),
   ];
 

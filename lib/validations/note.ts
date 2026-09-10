@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_TAG_LENGTH, MAX_TAGS } from "@/lib/tags";
 
 export const noteContentSchema = z.unknown();
 
@@ -14,5 +15,5 @@ export const noteIdSchema = z.object({
 
 export const setTagsSchema = z.object({
   id: z.string().min(1),
-  tags: z.array(z.string().trim().min(1).max(32)).max(20),
+  tags: z.array(z.string().trim().min(1).max(MAX_TAG_LENGTH)).max(MAX_TAGS),
 });

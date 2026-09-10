@@ -6,10 +6,10 @@ import type { JSONContent } from "@tiptap/react";
 import { Archive, Pin, Trash2 } from "lucide-react";
 import { DocumentEditor, type SaveStatus } from "@/components/editor/document-editor";
 import { ShareToggle } from "@/components/share-toggle";
+import { TagPicker } from "@/components/tags/tag-picker";
 import { BackLink } from "@/components/ui-extras";
 import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { Input } from "@/components/ui/input";
 import {
   archiveNoteAction,
   deleteNoteAction,
@@ -41,6 +41,7 @@ export function NoteWorkspace({
   currentUserId,
   activities,
   revisions,
+  suggestedTags,
 }: {
   note: {
     id: string;
@@ -56,13 +57,11 @@ export function NoteWorkspace({
   currentUserId: string;
   activities: Activity[];
   revisions: Revision[];
+  suggestedTags: string[];
 }) {
   const router = useRouter();
   const [title, setTitle] = useState(note.title);
   const [status, setStatus] = useState<SaveStatus>("idle");
-  const [tagValue, setTagValue] = useState(
-    note.tags.map((item) => item.tag.name).join(", "),
-  );
   const { pending: pinning, run: runPin } = usePendingAction();
   const { pending: archiving, run: runArchive } = usePendingAction();
   const { pending: restoring, run: runRestore } = usePendingAction();
@@ -131,25 +130,13 @@ export function NoteWorkspace({
         onSave={(payload) => updateNoteAction({ id: note.id, ...payload })}
       />
 
-      <form
-        className="mt-4 flex gap-2"
-        action={async (formData) => {
-          const tags = String(formData.get("tags") ?? "")
-            .split(/[,\s]+/)
-            .filter(Boolean);
-          await setNoteTagsAction({ id: note.id, tags });
-        }}
-      >
-        <Input
-          name="tags"
-          value={tagValue}
-          onChange={(event) => setTagValue(event.target.value)}
-          placeholder="tags: important, ideas"
+      <div className="mt-4">
+        <TagPicker
+          selected={note.tags.map((item) => item.tag.name)}
+          suggestions={suggestedTags}
+          onChange={(tags) => setNoteTagsAction({ id: note.id, tags })}
         />
-        <SubmitButton type="submit" variant="secondary" size="sm" pendingLabel="Saving…">
-          Save tags
-        </SubmitButton>
-      </form>
+      </div>
 
       {note.visibility === "SHARED" && (
         <div className="mt-8 grid gap-6 pb-10 md:grid-cols-2">

@@ -1,0 +1,350 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Visibility {
+  PRIVATE
+  SHARED
+}
+
+enum MemberRole {
+  OWNER
+  MEMBER
+}
+
+enum Recurrence {
+  NONE
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum ActivityType {
+  CREATE
+  EDIT
+  SHARE
+  UNSHARE
+}
+
+enum NotificationType {
+  NOTE_SHARED
+  NOTE_EDITED
+  JOURNAL_SHARED
+  JOURNAL_EDITED
+  REMINDER_DUE
+  EVENT_SOON
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  emailVerified DateTime?
+  passwordHash  String?
+  image         String?
+  timezone      String    @default("UTC")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts                 Account[]
+  sessions                 Session[]
+  memberships              SharedSpaceMember[]
+  notes                    Note[]
+  noteRevisions            NoteRevision[]
+  journalEntries           JournalEntry[]
+  events                   Event[]
+  remindersCreated         Reminder[]              @relation("ReminderCreator")
+  remindersAssigned        Reminder[]              @relation("ReminderAssignee")
+  notifications            Notification[]
+  pushSubscriptions        PushSubscription[]
+  notificationPreference   NotificationPreference?
+  activities               Activity[]
+  tags                     Tag[]
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+model SharedSpace {
+  id         String   @id @default(cuid())
+  name       String   @default("Shared Space")
+  inviteCode String   @unique
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  members        SharedSpaceMember[]
+  notes          Note[]
+  journalEntries JournalEntry[]
+  events         Event[]
+  reminders      Reminder[]
+  activities     Activity[]
+}
+
+model SharedSpaceMember {
+  id            String     @id @default(cuid())
+  sharedSpaceId String
+  userId        String
+  role          MemberRole @default(MEMBER)
+  createdAt     DateTime   @default(now())
+
+  sharedSpace SharedSpace @relation(fields: [sharedSpaceId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sharedSpaceId, userId])
+  @@index([userId])
+}
+
+model Note {
+  id            String     @id @default(cuid())
+  title         String     @default("")
+  content       Json
+  contentText   String     @default("")
+  ownerId       String
+  sharedSpaceId String?
+  visibility    Visibility @default(PRIVATE)
+  isPinned      Boolean    @default(false)
+  isArchived    Boolean    @default(false)
+  deletedAt     DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  owner       User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  sharedSpace SharedSpace?  @relation(fields: [sharedSpaceId], references: [id], onDelete: SetNull)
+  revisions   NoteRevision[]
+  tags        NoteTag[]
+  reminders   Reminder[]
+  activities  Activity[]
+
+  @@index([ownerId, deletedAt])
+  @@index([sharedSpaceId, visibility, deletedAt])
+  @@index([updatedAt])
+  @@index([isPinned, isArchived, deletedAt])
+}
+
+model NoteRevision {
+  id        String   @id @default(cuid())
+  noteId    String
+  title     String
+  content   Json
+  editorId  String
+  createdAt DateTime @default(now())
+
+  note   Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  editor User @relation(fields: [editorId], references: [id], onDelete: Cascade)
+
+  @@index([noteId, createdAt])
+}
+
+model JournalEntry {
+  id            String     @id @default(cuid())
+  date          DateTime   @db.Date
+  title         String     @default("")
+  content       Json
+  contentText   String     @default("")
+  authorId      String
+  sharedSpaceId String?
+  visibility    Visibility @default(PRIVATE)
+  deletedAt     DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  author      User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  sharedSpace SharedSpace? @relation(fields: [sharedSpaceId], references: [id], onDelete: SetNull)
+  tags        JournalEntryTag[]
+  reminders   Reminder[]
+  activities  Activity[]
+
+  @@unique([authorId, date])
+  @@index([sharedSpaceId, visibility, deletedAt])
+  @@index([date])
+  @@index([updatedAt])
+}
+
+model Tag {
+  id          String   @id @default(cuid())
+  name        String
+  createdById String
+  createdAt   DateTime @default(now())
+
+  createdBy      User              @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  notes          NoteTag[]
+  journalEntries JournalEntryTag[]
+
+  @@unique([name, createdById])
+}
+
+model NoteTag {
+  noteId String
+  tagId  String
+
+  note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([noteId, tagId])
+}
+
+model JournalEntryTag {
+  journalEntryId String
+  tagId          String
+
+  journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  tag          Tag          @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([journalEntryId, tagId])
+}
+
+model Event {
+  id             String    @id @default(cuid())
+  title          String
+  description    String?
+  startAt        DateTime
+  endAt          DateTime?
+  creatorId      String
+  sharedSpaceId  String
+  lastNotifiedAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  creator     User         @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  sharedSpace SharedSpace  @relation(fields: [sharedSpaceId], references: [id], onDelete: Cascade)
+  reminders   Reminder[]
+
+  @@index([sharedSpaceId, startAt])
+  @@index([startAt])
+}
+
+model Reminder {
+  id             String     @id @default(cuid())
+  title          String
+  description    String?
+  dueAt          DateTime
+  creatorId      String
+  assignedToId   String?
+  sharedSpaceId  String?
+  noteId         String?
+  journalEntryId String?
+  eventId        String?
+  completedAt    DateTime?
+  snoozedUntil   DateTime?
+  recurrence     Recurrence @default(NONE)
+  lastNotifiedAt DateTime?
+  deletedAt      DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  creator      User          @relation("ReminderCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  assignedTo   User?         @relation("ReminderAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  sharedSpace  SharedSpace?  @relation(fields: [sharedSpaceId], references: [id], onDelete: SetNull)
+  note         Note?         @relation(fields: [noteId], references: [id], onDelete: SetNull)
+  journalEntry JournalEntry? @relation(fields: [journalEntryId], references: [id], onDelete: SetNull)
+  event        Event?        @relation(fields: [eventId], references: [id], onDelete: SetNull)
+
+  @@index([dueAt, completedAt, deletedAt])
+  @@index([sharedSpaceId])
+  @@index([creatorId, assignedToId])
+}
+
+model Notification {
+  id             String           @id @default(cuid())
+  userId         String
+  type           NotificationType
+  title          String
+  body           String?
+  readAt         DateTime?
+  noteId         String?
+  journalEntryId String?
+  reminderId     String?
+  eventId        String?
+  createdAt      DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model NotificationPreference {
+  id            String  @id @default(cuid())
+  userId        String  @unique
+  sharedContent Boolean @default(true)
+  reminders     Boolean @default(true)
+  events        Boolean @default(true)
+  pushEnabled   Boolean @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Activity {
+  id             String       @id @default(cuid())
+  type           ActivityType
+  actorId        String
+  sharedSpaceId  String
+  noteId         String?
+  journalEntryId String?
+  createdAt      DateTime     @default(now())
+
+  actor        User          @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  sharedSpace  SharedSpace   @relation(fields: [sharedSpaceId], references: [id], onDelete: Cascade)
+  note         Note?         @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  journalEntry JournalEntry? @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+
+  @@index([noteId, createdAt])
+  @@index([journalEntryId, createdAt])
+  @@index([sharedSpaceId, createdAt])
+}

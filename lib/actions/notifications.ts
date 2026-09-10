@@ -43,7 +43,9 @@ export async function updateNotificationPrefsAction(input: unknown) {
 
 export async function savePushSubscriptionAction(input: unknown) {
   const parsed = pushSubscriptionSchema.safeParse(input);
-  if (!parsed.success) return { ok: false };
+  if (!parsed.success) {
+    return { ok: false as const, error: "Invalid push subscription." };
+  }
   const user = await requireUser();
 
   await prisma.pushSubscription.upsert({
@@ -68,7 +70,7 @@ export async function savePushSubscriptionAction(input: unknown) {
   });
 
   revalidatePath("/settings");
-  return { ok: true };
+  return { ok: true as const };
 }
 
 export async function deletePushSubscriptionAction(endpoint: string) {

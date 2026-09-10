@@ -9,19 +9,42 @@ import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/settings/theme-toggle";
 import { NotificationSettings } from "@/components/settings/notification-settings";
 import { DeleteAccountForm } from "@/components/settings/delete-account-form";
+import { SpaceDetails } from "@/components/settings/space-details";
 import Link from "next/link";
 
 export default async function SettingsPage() {
   const ctx = await getSpaceContext();
-  const user = await prisma.user.findUnique({
-    where: { id: ctx.userId },
-    select: {
-      name: true,
-      email: true,
-      timezone: true,
-      notificationPreference: true,
-    },
-  });
+  const spaceFilter = { sharedSpaceId: ctx.space.id, deletedAt: null };
+  const [
+    user,
+    sharedNotes,
+    sharedJournal,
+    sharedEvents,
+    sharedReminders,
+  ] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: ctx.userId },
+      select: {
+        name: true,
+        email: true,
+        timezone: true,
+        notificationPreference: true,
+      },
+    }),
+    prisma.note.count({
+      where: { ...spaceFilter, visibility: "SHARED" },
+    }),
+    prisma.journalEntry.count({
+      where: { ...spaceFilter, visibility: "SHARED" },
+    }),
+    prisma.event.count({
+      where: { sharedSpaceId: ctx.space.id },
+    }),
+    prisma.reminder.count({
+      where: spaceFilter,
+    }),
+  ]);
+  const isOwner = ctx.membership.role === "OWNER";
 
   return (
     <div className="grid gap-8">
@@ -50,23 +73,49 @@ export default async function SettingsPage() {
         </form>
       </section>
 
-      <section className="rounded-3xl border bg-card p-5">
-        <h2 className="font-serif text-xl">Invite</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Share this code so someone can join {ctx.space.name}.
-        </p>
-        <p className="mt-3 font-mono text-2xl tracking-[0.3em]">
-          {ctx.space.inviteCode}
-        </p>
-        <form action={rotateInviteCodeAction} className="mt-3">
-          <SubmitButton variant="secondary" pendingLabel="Refreshing…">
-            Refresh code
-          </SubmitButton>
-        </form>
-        <Link href="/shared" className="mt-4 inline-block text-sm text-primary">
-          View shared content →
-        </Link>
-      </section>
+      <SpaceDetails
+        spaceName={ctx.space.name}
+        createdAt={ctx.space.createdAt}
+        currentUserId={ctx.userId}
+        currentRole={ctx.membership.role}
+        members={ctx.space.members.map((member) => ({
+          userId: member.userId,
+          role: member.role,
+          joinedAt: member.createdAt,
+          name: member.user.name,
+          email: member.user.email,
+        }))}
+        stats={{
+          notes: sharedNotes,
+          journal: sharedJournal,
+          events: sharedEvents,
+          reminders: sharedReminders,
+        }}
+      >
+        <div className="mt-6 border-t pt-5">
+          <h3 className="text-sm font-medium">Invite</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Share this code so someone can join {ctx.space.name}.
+          </p>
+          <p className="mt-3 font-mono text-2xl tracking-[0.3em]">
+            {ctx.space.inviteCode}
+          </p>
+          {isOwner ? (
+            <form action={rotateInviteCodeAction} className="mt-3">
+              <SubmitButton variant="secondary" pendingLabel="Refreshing…">
+                Refresh code
+              </SubmitButton>
+            </form>
+          ) : (
+            <p className="mt-3 text-xs text-muted-foreground">
+              Only the owner can refresh the invite code.
+            </p>
+          )}
+          <Link href="/shared" className="mt-4 inline-block text-sm text-primary">
+            View shared content →
+          </Link>
+        </div>
+      </SpaceDetails>
 
       <section className="rounded-3xl border bg-card p-5">
         <h2 className="font-serif text-xl">Appearance</h2>

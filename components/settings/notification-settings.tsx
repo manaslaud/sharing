@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -18,10 +18,60 @@ type Prefs = {
   pushEnabled: boolean;
 };
 
+function isIos() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent);
+}
+
+function isStandalone() {
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    ("standalone" in navigator && Boolean(navigator.standalone))
+  );
+}
+
+function arrayBufferToBase64Url(buffer: ArrayBuffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function subscriptionPayload(subscription: PushSubscription) {
+  const json = subscription.toJSON();
+  const p256dhKey = subscription.getKey("p256dh");
+  const authKey = subscription.getKey("auth");
+  const p256dh =
+    json.keys?.p256dh ?? (p256dhKey ? arrayBufferToBase64Url(p256dhKey) : "");
+  const auth = json.keys?.auth ?? (authKey ? arrayBufferToBase64Url(authKey) : "");
+  return {
+    endpoint: json.endpoint || subscription.endpoint,
+    keys: { p256dh, auth },
+  };
+}
+
+async function getPushRegistration() {
+  const registration = await navigator.serviceWorker.register("/sw.js");
+  await registration.update().catch(() => undefined);
+  return navigator.serviceWorker.ready;
+}
+
 export function NotificationSettings({ initial }: { initial: Prefs }) {
   const [prefs, setPrefs] = useState(initial);
   const [pushSupported, setPushSupported] = useState(true);
+  const [deviceSubscribed, setDeviceSubscribed] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      setPushSupported(false);
+      return;
+    }
+    void navigator.serviceWorker
+      .getRegistration()
+      .then((registration) => registration?.pushManager.getSubscription())
+      .then((subscription) => setDeviceSubscribed(Boolean(subscription)))
+      .catch(() => setDeviceSubscribed(false));
+  }, []);
 
   async function save(next: Prefs) {
     setPrefs(next);
@@ -31,9 +81,19 @@ export function NotificationSettings({ initial }: { initial: Prefs }) {
   async function enablePush() {
     setBusy(true);
     try {
-      if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+      if (
+        !("Notification" in window) ||
+        !("serviceWorker" in navigator) ||
+        !("PushManager" in window)
+      ) {
         setPushSupported(false);
         toast.error("Push notifications aren't available in this browser.");
+        return;
+      }
+      if (isIos() && !isStandalone()) {
+        toast.error(
+          "On iPhone, add this site to the Home Screen, open it from there, then enable push.",
+        );
         return;
       }
       const permission = await Notification.requestPermission();
@@ -41,25 +101,33 @@ export function NotificationSettings({ initial }: { initial: Prefs }) {
         toast.error("Notifications were not enabled.");
         return;
       }
-      const registration = await navigator.serviceWorker.ready;
       const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
       if (!publicKey) {
-        toast.error("Push is not configured on the server.");
+        toast.error(
+          "Push is not configured on the server. Redeploy after setting VAPID keys.",
+        );
         return;
       }
+      const registration = await getPushRegistration();
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(publicKey),
       });
-      const json = subscription.toJSON();
-      await savePushSubscriptionAction({
-        endpoint: json.endpoint,
-        keys: json.keys,
-      });
-      await save({ ...prefs, pushEnabled: true });
-      toast.success("Push notifications enabled");
-    } catch {
-      setPushSupported(false);
+      const payload = subscriptionPayload(subscription);
+      if (!payload.endpoint || !payload.keys.p256dh || !payload.keys.auth) {
+        toast.error("This browser didn't return a valid push subscription.");
+        return;
+      }
+      const result = await savePushSubscriptionAction(payload);
+      if (!result.ok) {
+        toast.error(result.error ?? "Couldn't save this device for push.");
+        return;
+      }
+      setPrefs((current) => ({ ...current, pushEnabled: true }));
+      setDeviceSubscribed(true);
+      toast.success("This device will get reminder alerts.");
+    } catch (error) {
+      console.error(error);
       toast.error("Couldn't enable push notifications.");
     } finally {
       setBusy(false);
@@ -69,17 +137,20 @@ export function NotificationSettings({ initial }: { initial: Prefs }) {
   async function disablePush() {
     setBusy(true);
     try {
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
+      const registration = await navigator.serviceWorker.getRegistration();
+      const subscription = await registration?.pushManager.getSubscription();
       if (subscription) {
         await deletePushSubscriptionAction(subscription.endpoint);
         await subscription.unsubscribe();
       }
+      setDeviceSubscribed(false);
       await save({ ...prefs, pushEnabled: false });
     } finally {
       setBusy(false);
     }
   }
+
+  const needsDeviceSetup = !deviceSubscribed;
 
   return (
     <section className="rounded-3xl border bg-card p-5">
@@ -89,18 +160,30 @@ export function NotificationSettings({ initial }: { initial: Prefs }) {
           <div>
             <Label>Push notifications</Label>
             <p className="text-xs text-muted-foreground">
-              {pushSupported
-                ? "Get reminders even when the app is closed."
-                : "This browser doesn't support Web Push."}
+              {!pushSupported
+                ? "This browser doesn't support Web Push."
+                : needsDeviceSetup
+                  ? "This device isn't subscribed yet. Enable here on the live site in Chrome."
+                  : "This device will get reminder alerts when the app is closed."}
             </p>
           </div>
-          {prefs.pushEnabled ? (
-            <Button size="sm" variant="secondary" loading={busy} onClick={disablePush}>
-              Disable
+          {needsDeviceSetup ? (
+            <Button
+              size="sm"
+              loading={busy}
+              disabled={!pushSupported}
+              onClick={enablePush}
+            >
+              {busy ? "Enabling…" : "Enable"}
             </Button>
           ) : (
-            <Button size="sm" loading={busy} disabled={!pushSupported} onClick={enablePush}>
-              {busy ? "Enabling…" : "Enable"}
+            <Button
+              size="sm"
+              variant="secondary"
+              loading={busy}
+              onClick={disablePush}
+            >
+              Disable
             </Button>
           )}
         </div>

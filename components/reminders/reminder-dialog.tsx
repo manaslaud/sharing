@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,79 +12,74 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createReminderAction } from "@/lib/actions/reminders";
+import { usePendingAction } from "@/lib/use-pending-action";
 import { toast } from "sonner";
-
-type Partner = { id: string; name: string } | null;
 
 export function ReminderDialog({
   open,
   onOpenChange,
-  partner,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  partner?: Partner;
 }) {
-  const [pending, setPending] = useState(false);
+  const { pending, run } = usePendingAction();
 
-  async function onSubmit(formData: FormData) {
-    setPending(true);
-    const dueLocal = String(formData.get("dueAt") ?? "");
-    const assigned = String(formData.get("assignedTo") ?? "me");
-    const shared = assigned !== "personal";
-    const result = await createReminderAction({
-      title: formData.get("title"),
-      description: formData.get("description") || null,
-      dueAt: dueLocal ? new Date(dueLocal) : new Date(),
-      shared,
-      assignedToId:
-        assigned === "partner" && partner
-          ? partner.id
-          : assigned === "both"
-            ? null
-            : undefined,
-      recurrence: formData.get("recurrence") || "NONE",
+  function onSubmit(formData: FormData) {
+    run(async () => {
+      const dueLocal = String(formData.get("dueAt") ?? "");
+      const shared = String(formData.get("assignedTo") ?? "personal") === "both";
+      const result = await createReminderAction({
+        title: formData.get("title"),
+        description: formData.get("description") || null,
+        dueAt: dueLocal ? new Date(dueLocal) : new Date(),
+        shared,
+        assignedToId: shared ? null : undefined,
+        recurrence: formData.get("recurrence") || "NONE",
+      });
+      if (!result.ok) {
+        toast.error(result.error ?? "Couldn't save reminder");
+        return;
+      }
+      toast.success("Reminder saved");
+      onOpenChange(false);
     });
-    setPending(false);
-    if (!result.ok) {
-      toast.error(result.error ?? "Couldn't save reminder");
-      return;
-    }
-    toast.success("Reminder saved");
-    onOpenChange(false);
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!pending) onOpenChange(next);
+      }}
+    >
+      <DialogContent className="sm:max-w-md" showCloseButton={!pending}>
         <DialogHeader>
           <DialogTitle>Reminder</DialogTitle>
         </DialogHeader>
         <form action={onSubmit} className="grid gap-3">
           <div className="grid gap-1.5">
             <Label htmlFor="title">Title</Label>
-            <Input id="title" name="title" required placeholder="Discuss vacation plans" />
+            <Input id="title" name="title" required placeholder="Discuss vacation plans" disabled={pending} />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="description">Notes</Label>
-            <Textarea id="description" name="description" rows={3} />
+            <Textarea id="description" name="description" rows={3} disabled={pending} />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="dueAt">When</Label>
-            <Input id="dueAt" name="dueAt" type="datetime-local" required />
+            <Input id="dueAt" name="dueAt" type="datetime-local" required disabled={pending} />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="assignedTo">Who</Label>
             <select
               id="assignedTo"
               name="assignedTo"
-              className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+              className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm disabled:opacity-50"
               defaultValue="personal"
+              disabled={pending}
             >
               <option value="personal">Just me</option>
-              <option value="me">Shared · me</option>
-              {partner ? <option value="partner">Shared · {partner.name}</option> : null}
-              <option value="both">Shared · both of us</option>
+              <option value="both">Both of us</option>
             </select>
           </div>
           <div className="grid gap-1.5">
@@ -93,8 +87,9 @@ export function ReminderDialog({
             <select
               id="recurrence"
               name="recurrence"
-              className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+              className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm disabled:opacity-50"
               defaultValue="NONE"
+              disabled={pending}
             >
               <option value="NONE">Does not repeat</option>
               <option value="DAILY">Daily</option>

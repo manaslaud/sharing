@@ -10,6 +10,7 @@ import { ThemeToggle } from "@/components/settings/theme-toggle";
 import { NotificationSettings } from "@/components/settings/notification-settings";
 import { DeleteAccountForm } from "@/components/settings/delete-account-form";
 import { SpaceDetails } from "@/components/settings/space-details";
+import { isSpaceFull } from "@/lib/space-limits";
 import Link from "next/link";
 
 export default async function SettingsPage() {
@@ -45,6 +46,7 @@ export default async function SettingsPage() {
     }),
   ]);
   const isOwner = ctx.membership.role === "OWNER";
+  const spaceIsFull = isSpaceFull(ctx.space.members.length);
 
   return (
     <div className="grid gap-8">
@@ -94,22 +96,30 @@ export default async function SettingsPage() {
       >
         <div className="mt-6 border-t pt-5">
           <h3 className="text-sm font-medium">Invite</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Share this code so someone can join {ctx.space.name}.
-          </p>
-          <p className="mt-3 font-mono text-2xl tracking-[0.3em]">
-            {ctx.space.inviteCode}
-          </p>
-          {isOwner ? (
-            <form action={rotateInviteCodeAction} className="mt-3">
-              <SubmitButton variant="secondary" pendingLabel="Refreshing…">
-                Refresh code
-              </SubmitButton>
-            </form>
-          ) : (
-            <p className="mt-3 text-xs text-muted-foreground">
-              Only the owner can refresh the invite code.
+          {spaceIsFull ? (
+            <p className="mt-1 text-sm text-muted-foreground">
+              This space is limited to two people, so new invites are closed.
             </p>
+          ) : (
+            <>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Share this code so one other person can join {ctx.space.name}.
+              </p>
+              <p className="mt-3 font-mono text-2xl tracking-[0.3em]">
+                {ctx.space.inviteCode}
+              </p>
+              {isOwner ? (
+                <form action={rotateInviteCodeAction} className="mt-3">
+                  <SubmitButton variant="secondary" pendingLabel="Refreshing…">
+                    Refresh code
+                  </SubmitButton>
+                </form>
+              ) : (
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Only the owner can refresh the invite code.
+                </p>
+              )}
+            </>
           )}
           <Link href="/shared" className="mt-4 inline-block text-sm text-primary">
             View shared content →

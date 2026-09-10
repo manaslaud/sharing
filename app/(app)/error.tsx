@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 export default function ErrorPage({
@@ -13,6 +13,8 @@ export default function ErrorPage({
   const isChunkError =
     error.name === "ChunkLoadError" ||
     /Loading chunk|Failed to load chunk|ChunkLoadError/i.test(error.message);
+
+  const [retrying, setRetrying] = useState(false);
 
   useEffect(() => {
     if (!isChunkError) return;
@@ -35,7 +37,10 @@ export default function ErrorPage({
       </p>
       <Button
         className="mt-6"
+        loading={retrying}
         onClick={() => {
+          if (retrying) return;
+          setRetrying(true);
           if (isChunkError) {
             window.location.reload();
             return;
@@ -43,7 +48,7 @@ export default function ErrorPage({
           reset();
         }}
       >
-        Try again
+        {retrying ? "Retrying…" : "Try again"}
       </Button>
     </div>
   );

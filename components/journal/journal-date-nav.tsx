@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useTransition } from "react";
 import { addDays, format, parseISO } from "date-fns";
 import { CalendarDays } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -13,6 +12,7 @@ import {
 } from "@/components/ui/popover";
 import { ensureJournalEntryAction } from "@/lib/actions/journal";
 import { cn } from "@/lib/utils";
+import { usePendingAction } from "@/lib/use-pending-action";
 
 export function JournalDateNav({
   date,
@@ -26,7 +26,7 @@ export function JournalDateNav({
   const prev = format(addDays(current, -1), "yyyy-MM-dd");
   const next = format(addDays(current, 1), "yyyy-MM-dd");
   const today = format(new Date(), "yyyy-MM-dd");
-  const [pending, startTransition] = useTransition();
+  const { pending, run } = usePendingAction();
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -76,13 +76,9 @@ export function JournalDateNav({
       <Button
         size="sm"
         loading={pending}
-        onClick={() =>
-          startTransition(() => {
-            void ensureJournalEntryAction(date);
-          })
-        }
+        onClick={() => run(() => ensureJournalEntryAction(date))}
       >
-        Write this day
+        {pending ? "Opening…" : "Write this day"}
       </Button>
     </div>
   );

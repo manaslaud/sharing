@@ -40,14 +40,12 @@ export function AppShell({
   unreadCount,
   pinned,
   recent,
-  partner,
   children,
 }: {
   spaceName: string;
   unreadCount: number;
   pinned: { id: string; title: string }[];
   recent: { id: string; title: string; href: string }[];
-  partner?: { id: string; name: string } | null;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -163,7 +161,7 @@ export function AppShell({
               ))}
             </div>
           </nav>
-          <QuickCreate partner={partner} />
+          <QuickCreate />
         </>
       )}
     </div>

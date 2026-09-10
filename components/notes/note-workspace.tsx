@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { JSONContent } from "@tiptap/react";
 import { Archive, Pin, Trash2 } from "lucide-react";
@@ -19,6 +19,7 @@ import {
   updateNoteAction,
 } from "@/lib/actions/notes";
 import { formatRelative } from "@/lib/dates";
+import { usePendingAction } from "@/lib/use-pending-action";
 
 type Activity = {
   id: string;
@@ -62,9 +63,11 @@ export function NoteWorkspace({
   const [tagValue, setTagValue] = useState(
     note.tags.map((item) => item.tag.name).join(", "),
   );
-  const [pinning, startPin] = useTransition();
-  const [archiving, startArchive] = useTransition();
+  const { pending: pinning, run: runPin } = usePendingAction();
+  const { pending: archiving, run: runArchive } = usePendingAction();
+  const { pending: restoring, run: runRestore } = usePendingAction();
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  const toolbarBusy = pinning || archiving;
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-3xl flex-col px-4 py-4 md:px-8">
@@ -84,10 +87,9 @@ export function NoteWorkspace({
             variant={note.isPinned ? "secondary" : "ghost"}
             aria-label="Pin"
             loading={pinning}
+            disabled={toolbarBusy}
             onClick={() =>
-              startPin(() => {
-                void pinNoteAction(note.id, !note.isPinned);
-              })
+              runPin(() => pinNoteAction(note.id, !note.isPinned))
             }
           >
             <Pin className={note.isPinned ? "fill-current" : ""} />
@@ -97,8 +99,9 @@ export function NoteWorkspace({
             variant="ghost"
             aria-label="Archive"
             loading={archiving}
+            disabled={toolbarBusy}
             onClick={() =>
-              startArchive(async () => {
+              runArchive(async () => {
                 await archiveNoteAction(note.id, !note.isArchived);
                 router.push(note.isArchived ? `/notes/${note.id}` : "/notes/archived");
               })
@@ -186,11 +189,12 @@ export function NoteWorkspace({
                     <Button
                       size="xs"
                       variant="outline"
-                      loading={restoringId === revision.id}
+                      loading={restoring && restoringId === revision.id}
+                      disabled={restoring}
                       onClick={() => {
                         setRestoringId(revision.id);
-                        void restoreNoteRevisionAction(note.id, revision.id).finally(
-                          () => setRestoringId(null),
+                        runRestore(() =>
+                          restoreNoteRevisionAction(note.id, revision.id),
                         );
                       }}
                     >

@@ -25,7 +25,8 @@ export function OnboardingForms() {
       <form action={create} className="grid gap-3 rounded-3xl border bg-card p-5">
         <h2 className="font-serif text-xl">Create a space</h2>
         <p className="text-sm text-muted-foreground">
-          Start a private shared space, then invite someone with a code.
+          Start a private shared space, then invite one other person with a
+          code.
         </p>
         <Label htmlFor="name">Space name</Label>
         <Input id="name" name="name" defaultValue="Shared Space" className="h-10" />
@@ -43,7 +44,8 @@ export function OnboardingForms() {
       <form action={join} className="grid gap-3 rounded-3xl border bg-card p-5">
         <h2 className="font-serif text-xl">Join with a code</h2>
         <p className="text-sm text-muted-foreground">
-          If someone already started a space, enter their invite code.
+          If someone already started a space and it isn&apos;t full, enter their
+          invite code.
         </p>
         <Label htmlFor="inviteCode">Invite code</Label>
         <Input

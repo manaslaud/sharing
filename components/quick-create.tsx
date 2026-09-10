@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { format } from "date-fns";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,12 +15,9 @@ import { createNoteAction } from "@/lib/actions/notes";
 import { ensureJournalEntryAction } from "@/lib/actions/journal";
 import { ReminderDialog } from "@/components/reminders/reminder-dialog";
 import { EventDialog } from "@/components/events/event-dialog";
+import { usePendingAction } from "@/lib/use-pending-action";
 
-export function QuickCreate({
-  partner,
-}: {
-  partner?: { id: string; name: string } | null;
-}) {
+export function QuickCreate() {
   const [open, setOpen] = useState(false);
   const [reminderOpen, setReminderOpen] = useState(false);
   const [eventOpen, setEventOpen] = useState(false);
@@ -70,11 +67,7 @@ export function QuickCreate({
           </SheetContent>
         </Sheet>
       </div>
-      <ReminderDialog
-        open={reminderOpen}
-        onOpenChange={setReminderOpen}
-        partner={partner ?? null}
-      />
+      <ReminderDialog open={reminderOpen} onOpenChange={setReminderOpen} />
       <EventDialog open={eventOpen} onOpenChange={setEventOpen} />
     </>
   );
@@ -89,8 +82,9 @@ function CreateActions({
   onReminder: () => void;
   onEvent: () => void;
 }) {
-  const [notePending, startNote] = useTransition();
-  const [journalPending, startJournal] = useTransition();
+  const { pending: notePending, run: runNote } = usePendingAction();
+  const { pending: journalPending, run: runJournal } = usePendingAction();
+  const busy = notePending || journalPending;
 
   return (
     <div className="grid gap-2 p-4">
@@ -98,28 +92,30 @@ function CreateActions({
         size="lg"
         className="justify-start"
         loading={notePending}
+        disabled={busy}
         onClick={() =>
-          startNote(() => {
+          runNote(() => {
             onClose?.();
-            void createNoteAction();
+            return createNoteAction();
           })
         }
       >
-        New Note
+        {notePending ? "Creating…" : "New Note"}
       </Button>
       <Button
         size="lg"
         variant="secondary"
         className="justify-start"
         loading={journalPending}
+        disabled={busy}
         onClick={() =>
-          startJournal(() => {
+          runJournal(() => {
             onClose?.();
-            void ensureJournalEntryAction(format(new Date(), "yyyy-MM-dd"));
+            return ensureJournalEntryAction(format(new Date(), "yyyy-MM-dd"));
           })
         }
       >
-        New Journal Entry
+        {journalPending ? "Opening…" : "New Journal Entry"}
       </Button>
       <Button
         size="lg"

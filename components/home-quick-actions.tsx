@@ -1,39 +1,36 @@
 "use client";
 
-import { useTransition } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { createNoteAction } from "@/lib/actions/notes";
 import { ensureJournalEntryAction } from "@/lib/actions/journal";
+import { usePendingAction } from "@/lib/use-pending-action";
 
 export function HomeQuickActions() {
-  const [notePending, startNote] = useTransition();
-  const [journalPending, startJournal] = useTransition();
+  const { pending: notePending, run: runNote } = usePendingAction();
+  const { pending: journalPending, run: runJournal } = usePendingAction();
+  const busy = notePending || journalPending;
 
   return (
     <div className="flex gap-2">
       <Button
         size="sm"
         loading={notePending}
-        onClick={() =>
-          startNote(() => {
-            void createNoteAction();
-          })
-        }
+        disabled={busy}
+        onClick={() => runNote(() => createNoteAction())}
       >
-        + New Note
+        {notePending ? "Creating…" : "+ New Note"}
       </Button>
       <Button
         size="sm"
         variant="secondary"
         loading={journalPending}
+        disabled={busy}
         onClick={() =>
-          startJournal(() => {
-            void ensureJournalEntryAction(format(new Date(), "yyyy-MM-dd"));
-          })
+          runJournal(() => ensureJournalEntryAction(format(new Date(), "yyyy-MM-dd")))
         }
       >
-        + Journal
+        {journalPending ? "Opening…" : "+ Journal"}
       </Button>
     </div>
   );

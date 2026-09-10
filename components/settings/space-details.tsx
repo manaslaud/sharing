@@ -97,8 +97,8 @@ export function SpaceDetails({
       </ul>
       {hasPartner ? null : (
         <p className="mt-3 text-sm text-muted-foreground">
-          You&apos;re here alone. Share the invite code below so someone can
-          join.
+          You&apos;re here alone. Share the invite code below so one other
+          person can join.
         </p>
       )}
 

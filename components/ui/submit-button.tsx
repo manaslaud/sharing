@@ -18,7 +18,18 @@ export function SubmitButton({
   const isLoading = Boolean(loading || pending);
 
   return (
-    <Button type="submit" {...props} loading={isLoading}>
+    <Button
+      type="submit"
+      {...props}
+      loading={isLoading}
+      onClick={(event) => {
+        if (isLoading) {
+          event.preventDefault();
+          return;
+        }
+        props.onClick?.(event);
+      }}
+    >
       {isLoading && pendingLabel ? pendingLabel : children}
     </Button>
   );

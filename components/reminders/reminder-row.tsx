@@ -1,9 +1,9 @@
 "use client";
 
-import { useTransition } from "react";
 import { completeReminderAction, snoozeReminderAction } from "@/lib/actions/reminders";
 import { formatNoteTime } from "@/lib/dates";
 import { Button } from "@/components/ui/button";
+import { usePendingAction } from "@/lib/use-pending-action";
 
 type Reminder = {
   id: string;
@@ -13,8 +13,9 @@ type Reminder = {
 };
 
 export function ReminderRow({ reminder }: { reminder: Reminder }) {
-  const [completing, startComplete] = useTransition();
-  const [snoozing, startSnooze] = useTransition();
+  const { pending: completing, run: runComplete } = usePendingAction();
+  const { pending: snoozing, run: runSnooze } = usePendingAction();
+  const busy = completing || snoozing;
 
   return (
     <div className="flex items-start justify-between gap-3 rounded-2xl border bg-card px-4 py-3">
@@ -30,25 +31,19 @@ export function ReminderRow({ reminder }: { reminder: Reminder }) {
           size="xs"
           variant="secondary"
           loading={completing}
-          onClick={() =>
-            startComplete(() => {
-              void completeReminderAction(reminder.id);
-            })
-          }
+          disabled={busy}
+          onClick={() => runComplete(() => completeReminderAction(reminder.id))}
         >
-          Complete
+          {completing ? "Completing…" : "Complete"}
         </Button>
         <Button
           size="xs"
           variant="ghost"
           loading={snoozing}
-          onClick={() =>
-            startSnooze(() => {
-              void snoozeReminderAction(reminder.id);
-            })
-          }
+          disabled={busy}
+          onClick={() => runSnooze(() => snoozeReminderAction(reminder.id))}
         >
-          Snooze
+          {snoozing ? "Snoozing…" : "Snooze"}
         </Button>
       </div>
     </div>

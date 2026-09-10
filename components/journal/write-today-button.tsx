@@ -1,24 +1,22 @@
 "use client";
 
-import { useTransition } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { ensureJournalEntryAction } from "@/lib/actions/journal";
+import { usePendingAction } from "@/lib/use-pending-action";
 
 export function WriteTodayButton({ label = "Write today" }: { label?: string }) {
-  const [pending, startTransition] = useTransition();
+  const { pending, run } = usePendingAction();
 
   return (
     <Button
       type="button"
       loading={pending}
       onClick={() =>
-        startTransition(() => {
-          void ensureJournalEntryAction(format(new Date(), "yyyy-MM-dd"));
-        })
+        run(() => ensureJournalEntryAction(format(new Date(), "yyyy-MM-dd")))
       }
     >
-      {label}
+      {pending ? "Opening…" : label}
     </Button>
   );
 }

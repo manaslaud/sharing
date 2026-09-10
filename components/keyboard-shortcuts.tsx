@@ -1,11 +1,12 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import { createNoteAction } from "@/lib/actions/notes";
 
 export function KeyboardShortcuts() {
   const router = useRouter();
+  const creating = useRef(false);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -23,7 +24,11 @@ export function KeyboardShortcuts() {
       }
       if (event.key === "n" && !event.metaKey && !event.ctrlKey) {
         event.preventDefault();
-        createNoteAction();
+        if (creating.current) return;
+        creating.current = true;
+        void Promise.resolve(createNoteAction()).finally(() => {
+          creating.current = false;
+        });
       }
     }
     window.addEventListener("keydown", onKey);

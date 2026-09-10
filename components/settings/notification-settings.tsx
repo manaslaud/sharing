@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import {
   updateNotificationPrefsAction,
 } from "@/lib/actions/notifications";
 import { toast } from "sonner";
+import { usePendingAction } from "@/lib/use-pending-action";
 
 type Prefs = {
   sharedContent: boolean;
@@ -60,6 +61,9 @@ export function NotificationSettings({ initial }: { initial: Prefs }) {
   const [pushSupported, setPushSupported] = useState(true);
   const [deviceSubscribed, setDeviceSubscribed] = useState(false);
   const [busy, setBusy] = useState(false);
+  const pushLock = useRef(false);
+  const { pending: prefsPending, run: runPrefs } = usePendingAction();
+  const controlsBusy = busy || prefsPending;
 
   useEffect(() => {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
@@ -73,12 +77,15 @@ export function NotificationSettings({ initial }: { initial: Prefs }) {
       .catch(() => setDeviceSubscribed(false));
   }, []);
 
-  async function save(next: Prefs) {
+  function save(next: Prefs) {
+    if (prefsPending) return;
     setPrefs(next);
-    await updateNotificationPrefsAction(next);
+    runPrefs(() => updateNotificationPrefsAction(next));
   }
 
   async function enablePush() {
+    if (pushLock.current) return;
+    pushLock.current = true;
     setBusy(true);
     try {
       if (
@@ -130,11 +137,14 @@ export function NotificationSettings({ initial }: { initial: Prefs }) {
       console.error(error);
       toast.error("Couldn't enable push notifications.");
     } finally {
+      pushLock.current = false;
       setBusy(false);
     }
   }
 
   async function disablePush() {
+    if (pushLock.current) return;
+    pushLock.current = true;
     setBusy(true);
     try {
       const registration = await navigator.serviceWorker.getRegistration();
@@ -146,6 +156,7 @@ export function NotificationSettings({ initial }: { initial: Prefs }) {
       setDeviceSubscribed(false);
       await save({ ...prefs, pushEnabled: false });
     } finally {
+      pushLock.current = false;
       setBusy(false);
     }
   }
@@ -171,7 +182,7 @@ export function NotificationSettings({ initial }: { initial: Prefs }) {
             <Button
               size="sm"
               loading={busy}
-              disabled={!pushSupported}
+              disabled={!pushSupported || controlsBusy}
               onClick={enablePush}
             >
               {busy ? "Enabling…" : "Enable"}
@@ -181,25 +192,29 @@ export function NotificationSettings({ initial }: { initial: Prefs }) {
               size="sm"
               variant="secondary"
               loading={busy}
+              disabled={controlsBusy}
               onClick={disablePush}
             >
-              Disable
+              {busy ? "Disabling…" : "Disable"}
             </Button>
           )}
         </div>
         <Toggle
           label="Shared notes"
           checked={prefs.sharedContent}
+          disabled={controlsBusy}
           onChange={(sharedContent) => save({ ...prefs, sharedContent })}
         />
         <Toggle
           label="Reminders"
           checked={prefs.reminders}
+          disabled={controlsBusy}
           onChange={(reminders) => save({ ...prefs, reminders })}
         />
         <Toggle
           label="Events"
           checked={prefs.events}
+          disabled={controlsBusy}
           onChange={(events) => save({ ...prefs, events })}
         />
       </div>
@@ -210,16 +225,18 @@ export function NotificationSettings({ initial }: { initial: Prefs }) {
 function Toggle({
   label,
   checked,
+  disabled,
   onChange,
 }: {
   label: string;
   checked: boolean;
+  disabled?: boolean;
   onChange: (value: boolean) => void;
 }) {
   return (
     <div className="flex items-center justify-between gap-4">
       <Label>{label}</Label>
-      <Switch checked={checked} onCheckedChange={onChange} />
+      <Switch checked={checked} disabled={disabled} onCheckedChange={onChange} />
     </div>
   );
 }

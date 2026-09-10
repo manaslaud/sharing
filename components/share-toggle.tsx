@@ -1,10 +1,10 @@
 "use client";
 
-import { useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { firstName } from "@/lib/names";
 import { shareNoteAction } from "@/lib/actions/notes";
 import { shareJournalAction } from "@/lib/actions/journal";
+import { usePendingAction } from "@/lib/use-pending-action";
 
 export function ShareToggle({
   id,
@@ -20,7 +20,7 @@ export function ShareToggle({
   const shared = visibility === "SHARED";
   const who = firstName(partnerName);
   const label = shared ? `Shared with ${who} ❤️` : `Share with ${who}`;
-  const [pending, startTransition] = useTransition();
+  const { pending, run } = usePendingAction();
 
   return (
     <Button
@@ -29,15 +29,14 @@ export function ShareToggle({
       size="sm"
       loading={pending}
       onClick={() =>
-        startTransition(() => {
-          void (kind === "note"
+        run(() =>
+          kind === "note"
             ? shareNoteAction(id, !shared)
-            : shareJournalAction(id, !shared));
-        })
+            : shareJournalAction(id, !shared),
+        )
       }
     >
-      {shared ? "❤️ " : "🔒 "}
-      {label}
+      {pending ? "Updating…" : `${shared ? "❤️ " : "🔒 "}${label}`}
     </Button>
   );
 }

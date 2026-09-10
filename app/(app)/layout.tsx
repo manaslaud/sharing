@@ -67,11 +67,6 @@ export default async function AppLayout({
         title: note.title || "Untitled",
       }))}
       recent={recent}
-      partner={
-        ctx.partner
-          ? { id: ctx.partner.id, name: ctx.partner.name }
-          : null
-      }
     >
       {children}
     </AppShell>

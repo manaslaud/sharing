@@ -273,14 +273,8 @@ function SaveStatusBar({
       {status === "error" && (
         <>
           <span>Unable to save</span>
-          <Button
-            size="xs"
-            variant="outline"
-            loading={status === "saving"}
-            disabled={status === "saving"}
-            onClick={onRetry}
-          >
-            {status === "saving" ? "Retrying…" : "Retry"}
+          <Button size="xs" variant="outline" onClick={onRetry}>
+            Retry
           </Button>
         </>
       )}

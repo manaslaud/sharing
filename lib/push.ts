@@ -4,6 +4,13 @@ import {
   notifyEventSoon,
   notifyReminderDue,
 } from "@/lib/notifications";
+import {
+  shouldFinalizeDispatch,
+  type PushSendResult,
+} from "@/lib/push-result";
+
+export type { PushSendResult } from "@/lib/push-result";
+export { shouldFinalizeDispatch } from "@/lib/push-result";
 
 function configurePush() {
   const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
@@ -17,18 +24,25 @@ function configurePush() {
 async function sendPush(
   userId: string,
   payload: { title: string; body?: string; url?: string },
-) {
-  if (!configurePush()) return;
+): Promise<PushSendResult> {
+  if (!configurePush()) {
+    return { attempted: 0, delivered: 0, awaitingSubscription: true };
+  }
   const pref = await prisma.notificationPreference.findUnique({
     where: { userId },
   });
-  if (pref && !pref.pushEnabled) return;
+  if (!pref?.pushEnabled) {
+    return { attempted: 0, delivered: 0, awaitingSubscription: false };
+  }
 
   const subscriptions = await prisma.pushSubscription.findMany({
     where: { userId },
   });
+  if (subscriptions.length === 0) {
+    return { attempted: 0, delivered: 0, awaitingSubscription: true };
+  }
 
-  await Promise.all(
+  const outcomes = await Promise.all(
     subscriptions.map(async (sub) => {
       try {
         await webpush.sendNotification(
@@ -38,6 +52,7 @@ async function sendPush(
           },
           JSON.stringify(payload),
         );
+        return true;
       } catch (error) {
         const status =
           typeof error === "object" && error && "statusCode" in error
@@ -46,14 +61,34 @@ async function sendPush(
         if (status === 404 || status === 410) {
           await prisma.pushSubscription.delete({ where: { id: sub.id } });
         }
+        return false;
       }
     }),
   );
+
+  const delivered = outcomes.filter(Boolean).length;
+  return {
+    attempted: subscriptions.length,
+    delivered,
+    awaitingSubscription: delivered === 0,
+  };
+}
+
+async function pushToUsers(
+  userIds: string[],
+  payload: { title: string; body?: string; url?: string },
+) {
+  const results: PushSendResult[] = [];
+  for (const userId of userIds) {
+    results.push(await sendPush(userId, payload));
+  }
+  return results;
 }
 
 export async function dispatchDueNotifications() {
   const now = new Date();
   const soon = new Date(now.getTime() + 30 * 60 * 1000);
+  const eventRetryAfter = new Date(now.getTime() - 2 * 60 * 60 * 1000);
 
   const reminders = await prisma.reminder.findMany({
     where: {
@@ -67,14 +102,18 @@ export async function dispatchDueNotifications() {
     },
   });
 
+  let remindersPushed = 0;
+
   for (const reminder of reminders) {
-    const userIds = reminder.sharedSpaceId
-      ? reminder.assignedToId
-        ? [reminder.assignedToId]
-        : reminder.sharedSpace?.members.map((member) => member.userId) ?? [
-            reminder.creatorId,
-          ]
-      : [reminder.assignedToId ?? reminder.creatorId];
+    const userIds = [
+      ...(reminder.sharedSpaceId
+        ? reminder.assignedToId
+          ? [reminder.assignedToId]
+          : reminder.sharedSpace?.members.map((member) => member.userId) ?? [
+              reminder.creatorId,
+            ]
+        : [reminder.assignedToId ?? reminder.creatorId]),
+    ].filter(Boolean);
 
     await notifyReminderDue({
       userIds,
@@ -82,29 +121,32 @@ export async function dispatchDueNotifications() {
       reminderId: reminder.id,
     });
 
-    for (const userId of userIds) {
-      await sendPush(userId, {
-        title: "Reminder",
-        body: reminder.title,
-        url: "/",
-      });
-    }
-
-    await prisma.reminder.update({
-      where: { id: reminder.id },
-      data: { lastNotifiedAt: now },
+    const results = await pushToUsers(userIds, {
+      title: "Reminder",
+      body: reminder.title,
+      url: "/",
     });
+
+    if (shouldFinalizeDispatch(results)) {
+      await prisma.reminder.update({
+        where: { id: reminder.id },
+        data: { lastNotifiedAt: now },
+      });
+      remindersPushed += 1;
+    }
   }
 
   const events = await prisma.event.findMany({
     where: {
       lastNotifiedAt: null,
-      startAt: { gt: now, lte: soon },
+      startAt: { gt: eventRetryAfter, lte: soon },
     },
     include: {
       sharedSpace: { include: { members: true } },
     },
   });
+
+  let eventsPushed = 0;
 
   for (const event of events) {
     const userIds = event.sharedSpace.members.map((member) => member.userId);
@@ -113,18 +155,25 @@ export async function dispatchDueNotifications() {
       title: event.title,
       eventId: event.id,
     });
-    for (const userId of userIds) {
-      await sendPush(userId, {
-        title: "Upcoming event",
-        body: `${event.title} starts in 30 minutes`,
-        url: "/calendar",
-      });
-    }
-    await prisma.event.update({
-      where: { id: event.id },
-      data: { lastNotifiedAt: now },
+    const minutes = Math.round(
+      (event.startAt.getTime() - now.getTime()) / 60_000,
+    );
+    const results = await pushToUsers(userIds, {
+      title: "Upcoming event",
+      body:
+        minutes > 0
+          ? `${event.title} starts in ${minutes} minutes`
+          : `${event.title} is starting`,
+      url: "/calendar",
     });
+    if (shouldFinalizeDispatch(results)) {
+      await prisma.event.update({
+        where: { id: event.id },
+        data: { lastNotifiedAt: now },
+      });
+      eventsPushed += 1;
+    }
   }
 
-  return { reminders: reminders.length, events: events.length };
+  return { reminders: remindersPushed, events: eventsPushed };
 }

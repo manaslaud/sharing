@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/app-shell";
+import { PushKeepAlive } from "@/components/push-keep-alive";
 import { prisma } from "@/lib/db";
 import { formatLongDate, toDateParam } from "@/lib/dates";
 import { journalAccessWhere, noteAccessWhere } from "@/lib/authz";
@@ -59,16 +60,19 @@ export default async function AppLayout({
     .slice(0, 5);
 
   return (
-    <AppShell
-      spaceName={ctx.space.name}
-      unreadCount={unreadCount}
-      pinned={pinned.map((note) => ({
-        id: note.id,
-        title: note.title || "Untitled",
-      }))}
-      recent={recent}
-    >
-      {children}
-    </AppShell>
+    <>
+      <PushKeepAlive />
+      <AppShell
+        spaceName={ctx.space.name}
+        unreadCount={unreadCount}
+        pinned={pinned.map((note) => ({
+          id: note.id,
+          title: note.title || "Untitled",
+        }))}
+        recent={recent}
+      >
+        {children}
+      </AppShell>
+    </>
   );
 }

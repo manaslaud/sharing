@@ -40,8 +40,25 @@ async function createForUsers(args: {
 
   if (!eligible.length) return;
 
+  let toCreate = eligible;
+  if (args.reminderId || args.eventId) {
+    const existing = await prisma.notification.findMany({
+      where: {
+        userId: { in: eligible },
+        type: args.type,
+        ...(args.reminderId ? { reminderId: args.reminderId } : {}),
+        ...(args.eventId ? { eventId: args.eventId } : {}),
+      },
+      select: { userId: true },
+    });
+    const already = new Set(existing.map((row) => row.userId));
+    toCreate = eligible.filter((userId) => !already.has(userId));
+  }
+
+  if (!toCreate.length) return;
+
   await prisma.notification.createMany({
-    data: eligible.map((userId) => ({
+    data: toCreate.map((userId) => ({
       userId,
       type: args.type,
       title: args.title,

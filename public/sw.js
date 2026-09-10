@@ -1,8 +1,8 @@
+const CACHE_NAME = "shared-space-v3";
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open("shared-space-v2").then((cache) =>
-      cache.addAll(["/offline"]),
-    ),
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(["/offline"])),
   );
   self.skipWaiting();
 });
@@ -13,7 +13,7 @@ self.addEventListener("activate", (event) => {
       const keys = await caches.keys();
       await Promise.all(
         keys
-          .filter((key) => key !== "shared-space-v2")
+          .filter((key) => key !== CACHE_NAME)
           .map((key) => caches.delete(key)),
       );
       await self.clients.claim();
@@ -23,6 +23,8 @@ self.addEventListener("activate", (event) => {
 
 function shouldBypass(url) {
   return (
+    url.pathname === "/sw.js" ||
+    url.pathname === "/manifest.webmanifest" ||
     url.pathname.startsWith("/_next/") ||
     url.pathname.startsWith("/api/") ||
     url.pathname.startsWith("/serwist")
@@ -49,7 +51,7 @@ self.addEventListener("fetch", (event) => {
     fetch(request)
       .then((response) => {
         const copy = response.clone();
-        caches.open("shared-space-v2").then((cache) => cache.put(request, copy));
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
         return response;
       })
       .catch(() => caches.match(request)),

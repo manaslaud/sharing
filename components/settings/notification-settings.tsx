@@ -9,6 +9,13 @@ import {
   savePushSubscriptionAction,
   updateNotificationPrefsAction,
 } from "@/lib/actions/notifications";
+import {
+  clearPushWanted,
+  markPushWanted,
+  registerAppServiceWorker,
+  subscriptionPayload,
+  urlBase64ToUint8Array,
+} from "@/lib/push-client";
 import { toast } from "sonner";
 import { usePendingAction } from "@/lib/use-pending-action";
 
@@ -28,32 +35,6 @@ function isStandalone() {
     window.matchMedia("(display-mode: standalone)").matches ||
     ("standalone" in navigator && Boolean(navigator.standalone))
   );
-}
-
-function arrayBufferToBase64Url(buffer: ArrayBuffer) {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function subscriptionPayload(subscription: PushSubscription) {
-  const json = subscription.toJSON();
-  const p256dhKey = subscription.getKey("p256dh");
-  const authKey = subscription.getKey("auth");
-  const p256dh =
-    json.keys?.p256dh ?? (p256dhKey ? arrayBufferToBase64Url(p256dhKey) : "");
-  const auth = json.keys?.auth ?? (authKey ? arrayBufferToBase64Url(authKey) : "");
-  return {
-    endpoint: json.endpoint || subscription.endpoint,
-    keys: { p256dh, auth },
-  };
-}
-
-async function getPushRegistration() {
-  const registration = await navigator.serviceWorker.register("/sw.js");
-  await registration.update().catch(() => undefined);
-  return navigator.serviceWorker.ready;
 }
 
 export function NotificationSettings({ initial }: { initial: Prefs }) {
@@ -115,7 +96,7 @@ export function NotificationSettings({ initial }: { initial: Prefs }) {
         );
         return;
       }
-      const registration = await getPushRegistration();
+      const registration = await registerAppServiceWorker();
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(publicKey),
@@ -130,6 +111,7 @@ export function NotificationSettings({ initial }: { initial: Prefs }) {
         toast.error(result.error ?? "Couldn't save this device for push.");
         return;
       }
+      markPushWanted();
       setPrefs((current) => ({ ...current, pushEnabled: true }));
       setDeviceSubscribed(true);
       toast.success("This device will get reminder alerts.");
@@ -153,6 +135,7 @@ export function NotificationSettings({ initial }: { initial: Prefs }) {
         await deletePushSubscriptionAction(subscription.endpoint);
         await subscription.unsubscribe();
       }
+      clearPushWanted();
       setDeviceSubscribed(false);
       await save({ ...prefs, pushEnabled: false });
     } finally {
@@ -239,15 +222,4 @@ function Toggle({
       <Switch checked={checked} disabled={disabled} onCheckedChange={onChange} />
     </div>
   );
-}
-
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const raw = window.atob(base64);
-  const output = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i += 1) {
-    output[i] = raw.charCodeAt(i);
-  }
-  return output;
 }

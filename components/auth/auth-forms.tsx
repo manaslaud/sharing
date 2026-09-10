@@ -31,7 +31,7 @@ export function LoginForm() {
       {state.error ? (
         <p className="text-sm text-destructive">{state.error}</p>
       ) : null}
-      <Button type="submit" size="lg" disabled={pending}>
+      <Button type="submit" size="lg" loading={pending}>
         {pending ? "Signing in…" : "Log in"}
       </Button>
       <p className="text-center text-sm text-muted-foreground">
@@ -77,7 +77,7 @@ export function SignupForm() {
       {state.error ? (
         <p className="text-sm text-destructive">{state.error}</p>
       ) : null}
-      <Button type="submit" size="lg" disabled={pending}>
+      <Button type="submit" size="lg" loading={pending}>
         {pending ? "Creating account…" : "Create account"}
       </Button>
       <p className="text-center text-sm text-muted-foreground">

@@ -1,40 +1,58 @@
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open("shared-space-v1").then((cache) =>
-      cache.addAll(["/", "/offline", "/notes", "/journal", "/calendar"]),
+    caches.open("shared-space-v2").then((cache) =>
+      cache.addAll(["/offline"]),
     ),
   );
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(
+        keys
+          .filter((key) => key !== "shared-space-v2")
+          .map((key) => caches.delete(key)),
+      );
+      await self.clients.claim();
+    })(),
+  );
 });
+
+function shouldBypass(url) {
+  return (
+    url.pathname.startsWith("/_next/") ||
+    url.pathname.startsWith("/api/") ||
+    url.pathname.startsWith("/serwist")
+  );
+}
 
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
 
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin || shouldBypass(url)) {
+    return;
+  }
+
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request).catch(() =>
-        caches.match(request).then((cached) => cached || caches.match("/offline")),
-      ),
+      fetch(request).catch(() => caches.match("/offline")),
     );
     return;
   }
 
   event.respondWith(
-    caches.match(request).then((cached) => {
-      const networked = fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open("shared-space-runtime").then((cache) => cache.put(request, copy));
-          return response;
-        })
-        .catch(() => cached);
-      return cached || networked;
-    }),
+    fetch(request)
+      .then((response) => {
+        const copy = response.clone();
+        caches.open("shared-space-v2").then((cache) => cache.put(request, copy));
+        return response;
+      })
+      .catch(() => caches.match(request)),
   );
 });
 

@@ -67,7 +67,7 @@ export function EventDialog({
             <Input id="endAt" name="endAt" type="datetime-local" />
           </div>
           <DialogFooter>
-            <Button type="submit" disabled={pending}>
+            <Button type="submit" loading={pending}>
               {pending ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>

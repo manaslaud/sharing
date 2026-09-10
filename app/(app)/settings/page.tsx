@@ -3,7 +3,7 @@ import { getSpaceContext } from "@/lib/session";
 import { PageHeader } from "@/components/ui-extras";
 import { logoutAction } from "@/lib/actions/auth";
 import { updateProfileFormAction, rotateInviteCodeAction } from "@/lib/actions/space";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/settings/theme-toggle";
@@ -45,7 +45,7 @@ export default async function SettingsPage() {
               defaultValue={user?.timezone ?? "UTC"}
             />
           </div>
-          <Button type="submit">Save profile</Button>
+          <SubmitButton pendingLabel="Saving…">Save profile</SubmitButton>
         </form>
       </section>
 
@@ -58,9 +58,9 @@ export default async function SettingsPage() {
           {ctx.space.inviteCode}
         </p>
         <form action={rotateInviteCodeAction} className="mt-3">
-          <Button type="submit" variant="secondary">
+          <SubmitButton variant="secondary" pendingLabel="Refreshing…">
             Refresh code
-          </Button>
+          </SubmitButton>
         </form>
         <Link href="/shared" className="mt-4 inline-block text-sm text-primary">
           View shared content →
@@ -84,9 +84,9 @@ export default async function SettingsPage() {
       />
 
       <form action={logoutAction}>
-        <button type="submit" className={buttonVariants({ variant: "outline" })}>
+        <SubmitButton variant="outline" pendingLabel="Signing out…">
           Log out
-        </button>
+        </SubmitButton>
       </form>
     </div>
   );

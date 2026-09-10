@@ -104,7 +104,7 @@ export function ReminderDialog({
             </select>
           </div>
           <DialogFooter>
-            <Button type="submit" disabled={pending}>
+            <Button type="submit" loading={pending}>
               {pending ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>

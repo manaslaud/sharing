@@ -6,7 +6,7 @@ import { Trash2 } from "lucide-react";
 import { DocumentEditor, type SaveStatus } from "@/components/editor/document-editor";
 import { ShareToggle } from "@/components/share-toggle";
 import { BackLink } from "@/components/ui-extras";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { JournalDateNav } from "@/components/journal/journal-date-nav";
 import {
   deleteJournalAction,
@@ -50,9 +50,9 @@ export function JournalWorkspace({
           {canDelete ? (
             <form action={deleteJournalAction}>
               <input type="hidden" name="id" value={entry.id} />
-              <Button size="icon-sm" variant="ghost" aria-label="Delete">
+              <SubmitButton size="icon-sm" variant="ghost" aria-label="Delete">
                 <Trash2 />
-              </Button>
+              </SubmitButton>
             </form>
           ) : null}
         </div>

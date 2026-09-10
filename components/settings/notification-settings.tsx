@@ -95,11 +95,11 @@ export function NotificationSettings({ initial }: { initial: Prefs }) {
             </p>
           </div>
           {prefs.pushEnabled ? (
-            <Button size="sm" variant="secondary" disabled={busy} onClick={disablePush}>
+            <Button size="sm" variant="secondary" loading={busy} onClick={disablePush}>
               Disable
             </Button>
           ) : (
-            <Button size="sm" disabled={busy || !pushSupported} onClick={enablePush}>
+            <Button size="sm" loading={busy} disabled={!pushSupported} onClick={enablePush}>
               {busy ? "Enabling…" : "Enable"}
             </Button>
           )}

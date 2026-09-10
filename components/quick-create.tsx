@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { format } from "date-fns";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -89,15 +89,21 @@ function CreateActions({
   onReminder: () => void;
   onEvent: () => void;
 }) {
+  const [notePending, startNote] = useTransition();
+  const [journalPending, startJournal] = useTransition();
+
   return (
     <div className="grid gap-2 p-4">
       <Button
         size="lg"
         className="justify-start"
-        onClick={() => {
-          onClose?.();
-          createNoteAction();
-        }}
+        loading={notePending}
+        onClick={() =>
+          startNote(() => {
+            onClose?.();
+            void createNoteAction();
+          })
+        }
       >
         New Note
       </Button>
@@ -105,10 +111,13 @@ function CreateActions({
         size="lg"
         variant="secondary"
         className="justify-start"
-        onClick={() => {
-          onClose?.();
-          ensureJournalEntryAction(format(new Date(), "yyyy-MM-dd"));
-        }}
+        loading={journalPending}
+        onClick={() =>
+          startJournal(() => {
+            onClose?.();
+            void ensureJournalEntryAction(format(new Date(), "yyyy-MM-dd"));
+          })
+        }
       >
         New Journal Entry
       </Button>

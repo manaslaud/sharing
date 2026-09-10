@@ -1,5 +1,6 @@
 "use client";
 
+import { useTransition } from "react";
 import { completeReminderAction, snoozeReminderAction } from "@/lib/actions/reminders";
 import { formatNoteTime } from "@/lib/dates";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,9 @@ type Reminder = {
 };
 
 export function ReminderRow({ reminder }: { reminder: Reminder }) {
+  const [completing, startComplete] = useTransition();
+  const [snoozing, startSnooze] = useTransition();
+
   return (
     <div className="flex items-start justify-between gap-3 rounded-2xl border bg-card px-4 py-3">
       <div>
@@ -25,14 +29,24 @@ export function ReminderRow({ reminder }: { reminder: Reminder }) {
         <Button
           size="xs"
           variant="secondary"
-          onClick={() => completeReminderAction(reminder.id)}
+          loading={completing}
+          onClick={() =>
+            startComplete(() => {
+              void completeReminderAction(reminder.id);
+            })
+          }
         >
           Complete
         </Button>
         <Button
           size="xs"
           variant="ghost"
-          onClick={() => snoozeReminderAction(reminder.id)}
+          loading={snoozing}
+          onClick={() =>
+            startSnooze(() => {
+              void snoozeReminderAction(reminder.id);
+            })
+          }
         >
           Snooze
         </Button>

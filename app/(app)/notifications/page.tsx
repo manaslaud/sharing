@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { PageHeader, EmptyState } from "@/components/ui-extras";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { prisma } from "@/lib/db";
 import { getSpaceContext } from "@/lib/session";
 import { formatRelative } from "@/lib/dates";
@@ -35,9 +35,9 @@ export default async function NotificationsPage() {
         title="Notifications"
         actions={
           <form action={markAllNotificationsReadAction}>
-            <Button variant="secondary" size="sm">
+            <SubmitButton variant="secondary" size="sm" pendingLabel="Updating…">
               Mark all read
-            </Button>
+            </SubmitButton>
           </form>
         }
       />

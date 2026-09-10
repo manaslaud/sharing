@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { JSONContent } from "@tiptap/react";
 import { Archive, Pin, Trash2 } from "lucide-react";
@@ -8,6 +8,7 @@ import { DocumentEditor, type SaveStatus } from "@/components/editor/document-ed
 import { ShareToggle } from "@/components/share-toggle";
 import { BackLink } from "@/components/ui-extras";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Input } from "@/components/ui/input";
 import {
   archiveNoteAction,
@@ -61,6 +62,9 @@ export function NoteWorkspace({
   const [tagValue, setTagValue] = useState(
     note.tags.map((item) => item.tag.name).join(", "),
   );
+  const [pinning, startPin] = useTransition();
+  const [archiving, startArchive] = useTransition();
+  const [restoringId, setRestoringId] = useState<string | null>(null);
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-3xl flex-col px-4 py-4 md:px-8">
@@ -79,7 +83,12 @@ export function NoteWorkspace({
             size="icon-sm"
             variant={note.isPinned ? "secondary" : "ghost"}
             aria-label="Pin"
-            onClick={() => pinNoteAction(note.id, !note.isPinned)}
+            loading={pinning}
+            onClick={() =>
+              startPin(() => {
+                void pinNoteAction(note.id, !note.isPinned);
+              })
+            }
           >
             <Pin className={note.isPinned ? "fill-current" : ""} />
           </Button>
@@ -87,19 +96,22 @@ export function NoteWorkspace({
             size="icon-sm"
             variant="ghost"
             aria-label="Archive"
-            onClick={async () => {
-              await archiveNoteAction(note.id, !note.isArchived);
-              router.push(note.isArchived ? `/notes/${note.id}` : "/notes/archived");
-            }}
+            loading={archiving}
+            onClick={() =>
+              startArchive(async () => {
+                await archiveNoteAction(note.id, !note.isArchived);
+                router.push(note.isArchived ? `/notes/${note.id}` : "/notes/archived");
+              })
+            }
           >
             <Archive />
           </Button>
           {note.ownerId === currentUserId ? (
             <form action={deleteNoteAction}>
               <input type="hidden" name="id" value={note.id} />
-              <Button size="icon-sm" variant="ghost" aria-label="Delete">
+              <SubmitButton size="icon-sm" variant="ghost" aria-label="Delete">
                 <Trash2 />
-              </Button>
+              </SubmitButton>
             </form>
           ) : null}
         </div>
@@ -131,9 +143,9 @@ export function NoteWorkspace({
           onChange={(event) => setTagValue(event.target.value)}
           placeholder="tags: important, ideas"
         />
-        <Button type="submit" variant="secondary" size="sm">
+        <SubmitButton type="submit" variant="secondary" size="sm" pendingLabel="Saving…">
           Save tags
-        </Button>
+        </SubmitButton>
       </form>
 
       {note.visibility === "SHARED" && (
@@ -174,9 +186,13 @@ export function NoteWorkspace({
                     <Button
                       size="xs"
                       variant="outline"
-                      onClick={() =>
-                        restoreNoteRevisionAction(note.id, revision.id)
-                      }
+                      loading={restoringId === revision.id}
+                      onClick={() => {
+                        setRestoringId(revision.id);
+                        void restoreNoteRevisionAction(note.id, revision.id).finally(
+                          () => setRestoringId(null),
+                        );
+                      }}
                     >
                       Restore
                     </Button>

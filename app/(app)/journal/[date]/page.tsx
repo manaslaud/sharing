@@ -4,7 +4,7 @@ import { toDateParam } from "@/lib/dates";
 import { getSpaceContext } from "@/lib/session";
 import { JournalWorkspace } from "@/components/journal/journal-workspace";
 import { writeJournalFormAction } from "@/lib/actions/journal";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { VisibilityBadge } from "@/components/ui-extras";
 import Link from "next/link";
 
@@ -45,7 +45,7 @@ export default async function JournalDatePage({
         <p className="mt-2 text-muted-foreground">No entry for this day yet.</p>
         <form action={writeJournalFormAction} className="mt-6">
           <input type="hidden" name="date" value={date} />
-          <Button type="submit">Write this day</Button>
+          <SubmitButton pendingLabel="Opening…">Write this day</SubmitButton>
         </form>
       </div>
     );

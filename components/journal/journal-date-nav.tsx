@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useTransition } from "react";
 import { addDays, format, parseISO } from "date-fns";
 import { CalendarDays } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -11,6 +12,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ensureJournalEntryAction } from "@/lib/actions/journal";
+import { cn } from "@/lib/utils";
 
 export function JournalDateNav({
   date,
@@ -24,20 +26,32 @@ export function JournalDateNav({
   const prev = format(addDays(current, -1), "yyyy-MM-dd");
   const next = format(addDays(current, 1), "yyyy-MM-dd");
   const today = format(new Date(), "yyyy-MM-dd");
+  const [pending, startTransition] = useTransition();
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Button size="sm" variant="outline" render={<Link href={`/journal/${prev}`} />}>
+      <Link
+        href={`/journal/${prev}`}
+        className={cn(buttonVariants({ size: "sm", variant: "outline" }))}
+      >
         Previous
-      </Button>
-      <Button size="sm" variant="outline" render={<Link href={`/journal/${today}`} />}>
+      </Link>
+      <Link
+        href={`/journal/${today}`}
+        className={cn(buttonVariants({ size: "sm", variant: "outline" }))}
+      >
         Today
-      </Button>
-      <Button size="sm" variant="outline" render={<Link href={`/journal/${next}`} />}>
+      </Link>
+      <Link
+        href={`/journal/${next}`}
+        className={cn(buttonVariants({ size: "sm", variant: "outline" }))}
+      >
         Next
-      </Button>
+      </Link>
       <Popover>
-        <PopoverTrigger render={<Button size="sm" variant="secondary" />}>
+        <PopoverTrigger
+          className={cn(buttonVariants({ size: "sm", variant: "secondary" }), "gap-1")}
+        >
           <CalendarDays className="size-4" />
           Jump to date
         </PopoverTrigger>
@@ -61,7 +75,12 @@ export function JournalDateNav({
       </Popover>
       <Button
         size="sm"
-        onClick={() => ensureJournalEntryAction(date)}
+        loading={pending}
+        onClick={() =>
+          startTransition(() => {
+            void ensureJournalEntryAction(date);
+          })
+        }
       >
         Write this day
       </Button>

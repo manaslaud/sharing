@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -9,7 +9,6 @@ import {
   joinSpaceAction,
   type SpaceState,
 } from "@/lib/actions/space";
-import { cn } from "@/lib/utils";
 
 export function OnboardingForms() {
   const [createState, create, creating] = useActionState(
@@ -36,13 +35,9 @@ export function OnboardingForms() {
         {createState.error ? (
           <p className="text-sm text-destructive">{createState.error}</p>
         ) : null}
-        <button
-          type="submit"
-          disabled={creating}
-          className={cn(buttonVariants({ size: "lg" }), "w-full")}
-        >
+        <Button type="submit" size="lg" className="w-full" loading={creating}>
           {creating ? "Creating…" : "Create space"}
-        </button>
+        </Button>
       </form>
 
       <form action={join} className="grid gap-3 rounded-3xl border bg-card p-5">
@@ -65,13 +60,15 @@ export function OnboardingForms() {
         {joinState.error ? (
           <p className="text-sm text-destructive">{joinState.error}</p>
         ) : null}
-        <button
+        <Button
           type="submit"
-          disabled={joining}
-          className={cn(buttonVariants({ variant: "secondary", size: "lg" }), "w-full")}
+          size="lg"
+          variant="secondary"
+          className="w-full"
+          loading={joining}
         >
           {joining ? "Joining…" : "Join space"}
-        </button>
+        </Button>
       </form>
     </div>
   );

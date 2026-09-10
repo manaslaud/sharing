@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { archiveNoteAction, listAccessibleNotes } from "@/lib/actions/notes";
 import { EmptyState, PageHeader } from "@/components/ui-extras";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { previewText } from "@/lib/content";
 
 export default async function ArchivedNotesPage() {
@@ -36,9 +36,9 @@ export default async function ArchivedNotesPage() {
                     await archiveNoteAction(note.id, false);
                   }}
                 >
-                  <Button size="xs" variant="secondary">
+                  <SubmitButton size="xs" variant="secondary" pendingLabel="Restoring…">
                     Restore
-                  </Button>
+                  </SubmitButton>
                 </form>
               </div>
               <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">

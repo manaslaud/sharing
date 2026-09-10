@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { EmptyState, PageHeader, VisibilityBadge } from "@/components/ui-extras";
 import { listAccessibleNotes, createNoteAction } from "@/lib/actions/notes";
 import { previewText } from "@/lib/content";
@@ -28,7 +28,7 @@ export default async function NotesPage({
               Archived
             </Link>
             <form action={createNoteAction}>
-              <Button type="submit">New note</Button>
+              <SubmitButton pendingLabel="Creating…">New note</SubmitButton>
             </form>
           </div>
         }
@@ -39,7 +39,7 @@ export default async function NotesPage({
           description="Start writing something important."
           action={
             <form action={createNoteAction}>
-              <Button type="submit">Create note</Button>
+              <SubmitButton pendingLabel="Creating…">Create note</SubmitButton>
             </form>
           }
         />

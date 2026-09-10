@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { EmptyState, PageHeader, VisibilityBadge } from "@/components/ui-extras";
 import { prisma } from "@/lib/db";
 import { journalAccessWhere, noteAccessWhere, reminderAccessWhere } from "@/lib/authz";
@@ -10,6 +9,7 @@ import { getSpaceContext } from "@/lib/session";
 import { createNoteAction } from "@/lib/actions/notes";
 import { HomeQuickActions } from "@/components/home-quick-actions";
 import { ReminderRow } from "@/components/reminders/reminder-row";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 export default async function HomePage() {
   const ctx = await getSpaceContext();
@@ -154,7 +154,7 @@ export default async function HomePage() {
             description="Start writing something important."
             action={
               <form action={createNoteAction}>
-                <Button type="submit">Create note</Button>
+                <SubmitButton pendingLabel="Creating…">Create note</SubmitButton>
               </form>
             }
           />

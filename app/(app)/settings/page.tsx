@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/settings/theme-toggle";
 import { NotificationSettings } from "@/components/settings/notification-settings";
+import { DeleteAccountForm } from "@/components/settings/delete-account-form";
 import Link from "next/link";
 
 export default async function SettingsPage() {
@@ -88,6 +89,11 @@ export default async function SettingsPage() {
           Log out
         </SubmitButton>
       </form>
+
+      <DeleteAccountForm
+        email={user?.email ?? ctx.user.email ?? ""}
+        partnerName={ctx.partner?.name ?? null}
+      />
     </div>
   );
 }

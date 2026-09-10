@@ -1,4 +1,4 @@
-import { get, set, del, keys } from "idb-keyval";
+import { get, set, del, keys, clear } from "idb-keyval";
 
 const DRAFT_PREFIX = "draft:";
 const CACHE_PREFIX = "cache:";
@@ -60,4 +60,8 @@ export async function writeQueue(jobs: OfflineJob[]) {
 export async function removeJob(id: string) {
   const current = await readQueue();
   await writeQueue(current.filter((job) => job.id !== id));
+}
+
+export async function clearAllOfflineData() {
+  await clear();
 }

@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 import { getMembershipOrNull, requireUser } from "@/lib/session";
 import { OnboardingForms } from "@/components/onboarding/onboarding-forms";
+import { DeleteAccountForm } from "@/components/settings/delete-account-form";
 
 export default async function OnboardingPage() {
-  await requireUser();
+  const user = await requireUser();
   const membership = await getMembershipOrNull();
   if (membership) redirect("/");
 
@@ -14,6 +15,13 @@ export default async function OnboardingPage() {
         Create a new shared space or join someone you trust.
       </p>
       <OnboardingForms />
+      <div className="mt-10 text-center">
+        <DeleteAccountForm
+          email={user.email ?? ""}
+          partnerName={null}
+          compact
+        />
+      </div>
     </main>
   );
 }

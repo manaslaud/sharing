@@ -1,3 +1,5 @@
+import { DEFAULT_TIMEZONE } from "./timezones";
+
 export function firstName(name: string | null | undefined) {
   if (!name?.trim()) return "them";
   return name.trim().split(/\s+/)[0] ?? "them";
@@ -15,10 +17,11 @@ export function hourInTimeZone(date: Date, timeZone?: string | null) {
       new Intl.DateTimeFormat("en-US", {
         hour: "numeric",
         hourCycle: "h23",
-        timeZone: timeZone || "UTC",
+        timeZone: timeZone || DEFAULT_TIMEZONE,
       }).format(date),
     );
   } catch {
     return date.getHours();
   }
 }
+

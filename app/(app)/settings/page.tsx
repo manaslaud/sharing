@@ -11,6 +11,7 @@ import { NotificationSettings } from "@/components/settings/notification-setting
 import { DeleteAccountForm } from "@/components/settings/delete-account-form";
 import { SpaceDetails } from "@/components/settings/space-details";
 import { isSpaceFull } from "@/lib/space-limits";
+import { DEFAULT_TIMEZONE, timeZoneOptions } from "@/lib/timezones";
 import Link from "next/link";
 
 export default async function SettingsPage() {
@@ -47,6 +48,8 @@ export default async function SettingsPage() {
   ]);
   const isOwner = ctx.membership.role === "OWNER";
   const spaceIsFull = isSpaceFull(ctx.space.members.length);
+  const timezone = user?.timezone ?? DEFAULT_TIMEZONE;
+  const zones = timeZoneOptions(timezone);
 
   return (
     <div className="grid min-w-0 gap-8">
@@ -65,11 +68,18 @@ export default async function SettingsPage() {
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="timezone">Timezone</Label>
-            <Input
+            <select
               id="timezone"
               name="timezone"
-              defaultValue={user?.timezone ?? "UTC"}
-            />
+              defaultValue={zones.includes(timezone) ? timezone : DEFAULT_TIMEZONE}
+              className="h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+            >
+              {zones.map((zone) => (
+                <option key={zone} value={zone}>
+                  {zone.replaceAll("_", " ")}
+                </option>
+              ))}
+            </select>
           </div>
           <SubmitButton pendingLabel="Saving…">Save profile</SubmitButton>
         </form>

@@ -50,7 +50,7 @@ model User {
   emailVerified DateTime?
   passwordHash  String?
   image         String?
-  timezone      String    @default("UTC")
+  timezone      String    @default("Asia/Kolkata")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isValidTimeZone } from "@/lib/timezones";
 
 export const createSpaceSchema = z.object({
   name: z.string().trim().min(1, "Give your space a name").max(60),
@@ -10,5 +11,8 @@ export const joinSpaceSchema = z.object({
 
 export const updateProfileSchema = z.object({
   name: z.string().trim().min(1).max(80),
-  timezone: z.string().trim().min(1).max(80),
+  timezone: z
+    .string()
+    .trim()
+    .refine(isValidTimeZone, "Choose a timezone from the list"),
 });

@@ -10,13 +10,14 @@ import { createNoteAction } from "@/lib/actions/notes";
 import { HomeQuickActions } from "@/components/home-quick-actions";
 import { ReminderRow } from "@/components/reminders/reminder-row";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { DEFAULT_TIMEZONE } from "@/lib/timezones";
 
 export default async function HomePage() {
   const ctx = await getSpaceContext();
   const now = new Date();
   const timezone =
     ctx.space.members.find((member) => member.userId === ctx.userId)?.user
-      .timezone ?? "UTC";
+      .timezone ?? DEFAULT_TIMEZONE;
   const hour = hourInTimeZone(now, timezone);
 
   const [reminders, events, pinned, recentNotes, recentJournal] =

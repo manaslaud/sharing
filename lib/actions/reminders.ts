@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { reminderAccessWhere } from "@/lib/authz";
-import { nextDueAt, snoozeUntil } from "@/lib/recurrence";
 import { getSpaceContext } from "@/lib/session";
 import {
   reminderIdSchema,
@@ -80,66 +79,6 @@ export async function updateReminderAction(input: unknown) {
 
   revalidateReminderPaths();
   return { ok: true as const };
-}
-
-export async function completeReminderAction(id: string) {
-  const parsed = reminderIdSchema.safeParse({ id });
-  if (!parsed.success) return { ok: false };
-  const ctx = await getSpaceContext();
-  const reminder = await prisma.reminder.findFirst({
-    where: {
-      id: parsed.data.id,
-      ...reminderAccessWhere(ctx.userId, ctx.spaceIds),
-    },
-  });
-  if (!reminder) return { ok: false };
-
-  const next = nextDueAt(reminder.dueAt, reminder.recurrence);
-  if (next) {
-    await prisma.reminder.update({
-      where: { id: reminder.id },
-      data: {
-        dueAt: next,
-        completedAt: null,
-        lastNotifiedAt: null,
-        snoozedUntil: null,
-      },
-    });
-  } else {
-    await prisma.reminder.update({
-      where: { id: reminder.id },
-      data: { completedAt: new Date() },
-    });
-  }
-
-  revalidateReminderPaths();
-  return { ok: true };
-}
-
-export async function snoozeReminderAction(id: string) {
-  const parsed = reminderIdSchema.safeParse({ id });
-  if (!parsed.success) return { ok: false };
-  const ctx = await getSpaceContext();
-  const reminder = await prisma.reminder.findFirst({
-    where: {
-      id: parsed.data.id,
-      ...reminderAccessWhere(ctx.userId, ctx.spaceIds),
-    },
-  });
-  if (!reminder) return { ok: false };
-
-  const until = snoozeUntil(new Date(), 1);
-  await prisma.reminder.update({
-    where: { id: reminder.id },
-    data: {
-      dueAt: until,
-      snoozedUntil: until,
-      lastNotifiedAt: null,
-    },
-  });
-
-  revalidateReminderPaths();
-  return { ok: true };
 }
 
 export async function deleteReminderAction(id: string) {

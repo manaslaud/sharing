@@ -1,5 +1,6 @@
 "use client"
 
+import type { ReactElement } from "react"
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip"
 import { cn } from "cn"
 
@@ -62,4 +63,19 @@ function TooltipContent({
   )
 }
 
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
+function ActionTooltip({
+  label,
+  children,
+}: {
+  label: string
+  children: ReactElement
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger render={children} />
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  )
+}
+
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, ActionTooltip }

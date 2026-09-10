@@ -26,7 +26,6 @@ export default async function HomePage() {
       prisma.reminder.findMany({
         where: {
           ...reminderAccessWhere(ctx.userId, ctx.spaceIds),
-          completedAt: null,
           dueAt: { lte: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000) },
         },
         orderBy: { dueAt: "asc" },

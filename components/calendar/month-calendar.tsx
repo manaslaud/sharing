@@ -131,7 +131,7 @@ export function MonthCalendar({
                 </div>
               ) : item.kind === "reminder" ? (
                 <ReminderRow
-                  key={item.id}
+                  key={`${item.id}-${item.when instanceof Date ? item.when.toISOString() : item.when}`}
                   reminder={{
                     id: item.id,
                     title: item.title,

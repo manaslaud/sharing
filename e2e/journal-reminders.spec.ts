@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test.setTimeout(90_000);
 
-test("journal date navigation and reminder complete", async ({ page }) => {
+test("journal date navigation and reminder delete", async ({ page }) => {
   const stamp = Date.now();
   const email = `e2e-j-${stamp}@example.com`;
   const password = "password123";
@@ -29,20 +29,11 @@ test("journal date navigation and reminder complete", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Create" }).first().click();
   await page.getByRole("button", { name: "New Reminder" }).click();
-  await page.getByLabel("Title").fill("Call mom");
+  await page.getByLabel("Title").fill("Delete this reminder");
   const due = new Date(Date.now() + 60 * 60 * 1000);
   const local = new Date(due.getTime() - due.getTimezoneOffset() * 60000)
     .toISOString()
     .slice(0, 16);
-  await page.getByLabel("When").fill(local);
-  await page.getByRole("button", { name: "Save" }).click();
-  await expect(page.getByText("Call mom")).toBeVisible();
-  await page.getByRole("button", { name: "Complete" }).click();
-  await expect(page.getByText("Call mom")).toHaveCount(0);
-
-  await page.getByRole("button", { name: "Create" }).first().click();
-  await page.getByRole("button", { name: "New Reminder" }).click();
-  await page.getByLabel("Title").fill("Delete this reminder");
   await page.getByLabel("When").fill(local);
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByText("Delete this reminder")).toBeVisible();

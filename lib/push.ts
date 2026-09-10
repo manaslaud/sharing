@@ -8,6 +8,7 @@ import {
   shouldFinalizeDispatch,
   type PushSendResult,
 } from "@/lib/push-result";
+import { nextOccurrence } from "@/lib/recurrence";
 
 export type { PushSendResult } from "@/lib/push-result";
 export { shouldFinalizeDispatch } from "@/lib/push-result";
@@ -93,9 +94,8 @@ export async function dispatchDueNotifications() {
   const reminders = await prisma.reminder.findMany({
     where: {
       deletedAt: null,
-      completedAt: null,
       dueAt: { lte: now },
-      lastNotifiedAt: null,
+      OR: [{ lastNotifiedAt: null }, { recurrence: { not: "NONE" } }],
     },
     include: {
       sharedSpace: { include: { members: true } },
@@ -105,6 +105,8 @@ export async function dispatchDueNotifications() {
   let remindersPushed = 0;
 
   for (const reminder of reminders) {
+    const recurring = reminder.recurrence !== "NONE";
+    const needsNotify = reminder.lastNotifiedAt == null;
     const userIds = [
       ...(reminder.sharedSpaceId
         ? reminder.assignedToId
@@ -115,24 +117,39 @@ export async function dispatchDueNotifications() {
         : [reminder.assignedToId ?? reminder.creatorId]),
     ].filter(Boolean);
 
-    await notifyReminderDue({
-      userIds,
-      title: reminder.title,
-      reminderId: reminder.id,
-    });
+    if (needsNotify) {
+      await notifyReminderDue({
+        userIds,
+        title: reminder.title,
+        reminderId: reminder.id,
+      });
 
-    const results = await pushToUsers(userIds, {
-      title: "Reminder",
-      body: reminder.title,
-      url: "/",
-    });
+      const results = await pushToUsers(userIds, {
+        title: "Reminder",
+        body: reminder.title,
+        url: "/",
+      });
 
-    if (shouldFinalizeDispatch(results)) {
+      if (!shouldFinalizeDispatch(results)) continue;
+      remindersPushed += 1;
+    }
+
+    if (recurring) {
+      const next = nextOccurrence(reminder.dueAt, reminder.recurrence, now);
+      if (next) {
+        await prisma.reminder.update({
+          where: { id: reminder.id },
+          data: {
+            dueAt: next,
+            lastNotifiedAt: null,
+          },
+        });
+      }
+    } else if (needsNotify) {
       await prisma.reminder.update({
         where: { id: reminder.id },
         data: { lastNotifiedAt: now },
       });
-      remindersPushed += 1;
     }
   }
 

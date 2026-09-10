@@ -4,6 +4,7 @@ import { Trash2 } from "lucide-react";
 import { deleteEventAction } from "@/lib/actions/events";
 import { formatNoteTime } from "@/lib/dates";
 import { Button } from "@/components/ui/button";
+import { ActionTooltip } from "@/components/ui/tooltip";
 import { usePendingAction } from "@/lib/use-pending-action";
 
 type EventItem = {
@@ -23,16 +24,18 @@ export function EventRow({ event }: { event: EventItem }) {
           {formatNoteTime(event.startAt)}
         </p>
       </div>
-      <Button
-        size="icon-sm"
-        variant="ghost"
-        aria-label="Delete"
-        className="hover:bg-destructive/10 hover:text-destructive"
-        loading={pending}
-        onClick={() => run(() => deleteEventAction(event.id))}
-      >
-        {pending ? null : <Trash2 />}
-      </Button>
+      <ActionTooltip label="Delete">
+        <Button
+          size="icon-sm"
+          variant="ghost"
+          aria-label="Delete"
+          className="hover:bg-destructive/10 hover:text-destructive"
+          loading={pending}
+          onClick={() => run(() => deleteEventAction(event.id))}
+        >
+          {pending ? null : <Trash2 />}
+        </Button>
+      </ActionTooltip>
     </div>
   );
 }

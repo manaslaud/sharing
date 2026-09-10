@@ -1,9 +1,10 @@
-import { endOfMonth, startOfMonth } from "date-fns";
+import { endOfMonth, startOfDay, startOfMonth } from "date-fns";
 import { PageHeader } from "@/components/ui-extras";
 import { MonthCalendar } from "@/components/calendar/month-calendar";
 import { prisma } from "@/lib/db";
 import { journalAccessWhere, reminderAccessWhere } from "@/lib/authz";
 import { toDateParam } from "@/lib/dates";
+import { occurrencesInRange } from "@/lib/recurrence";
 import { getSpaceContext } from "@/lib/session";
 
 export default async function CalendarPage() {
@@ -22,8 +23,14 @@ export default async function CalendarPage() {
     prisma.reminder.findMany({
       where: {
         ...reminderAccessWhere(ctx.userId, ctx.spaceIds),
-        completedAt: null,
-        dueAt: { gte: from, lte: to },
+        AND: [
+          {
+            OR: [
+              { recurrence: "NONE", dueAt: { gte: from, lte: to } },
+              { recurrence: { not: "NONE" } },
+            ],
+          },
+        ],
       },
     }),
     prisma.journalEntry.findMany({
@@ -71,16 +78,28 @@ export default async function CalendarPage() {
     });
   }
   for (const reminder of reminders) {
-    const date = toDateParam(reminder.dueAt);
-    const { items, marker } = bucket(date);
-    marker.reminder = true;
-    items.push({
-      kind: "reminder",
-      id: reminder.id,
-      title: reminder.title,
-      when: reminder.dueAt,
-      sharedSpaceId: reminder.sharedSpaceId,
-    });
+    const created = startOfDay(reminder.createdAt);
+    const pendingFrom =
+      reminder.dueAt.getTime() > created.getTime() ? reminder.dueAt : created;
+    const whenList = occurrencesInRange(
+      reminder.dueAt,
+      reminder.recurrence,
+      from,
+      to,
+      pendingFrom,
+    );
+    for (const when of whenList) {
+      const date = toDateParam(when);
+      const { items, marker } = bucket(date);
+      marker.reminder = true;
+      items.push({
+        kind: "reminder",
+        id: reminder.id,
+        title: reminder.title,
+        when,
+        sharedSpaceId: reminder.sharedSpaceId,
+      });
+    }
   }
   for (const event of events) {
     const date = toDateParam(event.startAt);

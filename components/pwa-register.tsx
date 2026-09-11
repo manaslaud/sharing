@@ -3,6 +3,8 @@
 import { useEffect } from "react";
 import { registerAppServiceWorker } from "@/lib/push-client";
 
+const UPDATE_INTERVAL_MS = 60 * 60 * 1000;
+
 export function PwaRegister() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
@@ -23,26 +25,14 @@ export function PwaRegister() {
 
     let cancelled = false;
     let interval: number | undefined;
-    const controller = new AbortController();
 
     async function start() {
       try {
         const registration = await registerAppServiceWorker();
         if (cancelled) return;
-
-        const update = () => {
+        interval = window.setInterval(() => {
           void registration.update().catch(() => undefined);
-        };
-
-        document.addEventListener(
-          "visibilitychange",
-          () => {
-            if (document.visibilityState === "visible") update();
-          },
-          { signal: controller.signal },
-        );
-        window.addEventListener("focus", update, { signal: controller.signal });
-        interval = window.setInterval(update, 60 * 60 * 1000);
+        }, UPDATE_INTERVAL_MS);
       } catch {
         /* unsupported or blocked */
       }
@@ -52,7 +42,6 @@ export function PwaRegister() {
 
     return () => {
       cancelled = true;
-      controller.abort();
       if (interval) window.clearInterval(interval);
     };
   }, []);

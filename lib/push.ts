@@ -52,6 +52,7 @@ async function sendPush(
             keys: { p256dh: sub.p256dh, auth: sub.auth },
           },
           JSON.stringify(payload),
+          { urgency: "high" },
         );
         return true;
       } catch (error) {

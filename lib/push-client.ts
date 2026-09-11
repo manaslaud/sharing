@@ -29,8 +29,15 @@ function isPushWanted() {
 }
 
 export async function registerAppServiceWorker() {
-  const registration = await navigator.serviceWorker.register("/sw.js");
-  await registration.update().catch(() => undefined);
+  await navigator.serviceWorker.register("/sw.js");
+  return navigator.serviceWorker.ready;
+}
+
+async function getAppServiceWorker() {
+  const existing = await navigator.serviceWorker.getRegistration();
+  if (!existing) {
+    await navigator.serviceWorker.register("/sw.js");
+  }
   return navigator.serviceWorker.ready;
 }
 
@@ -78,7 +85,7 @@ export async function ensurePushSubscription() {
   const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   if (!publicKey) return false;
 
-  const registration = await registerAppServiceWorker();
+  const registration = await getAppServiceWorker();
   let subscription = await registration.pushManager.getSubscription();
   if (!subscription) {
     if (!isPushWanted()) return false;

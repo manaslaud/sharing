@@ -2,7 +2,7 @@ import Link from "next/link";
 import { EmptyState, PageHeader, VisibilityBadge } from "@/components/ui-extras";
 import { prisma } from "@/lib/db";
 import { journalAccessWhere } from "@/lib/authz";
-import { formatLongDate, toDateParam } from "@/lib/dates";
+import { formatLongDate, journalPath, toDateParam } from "@/lib/dates";
 import { previewText } from "@/lib/content";
 import { getSpaceContext } from "@/lib/session";
 import { JournalDateNav } from "@/components/journal/journal-date-nav";
@@ -63,7 +63,7 @@ export default async function JournalPage({
           {entries.map((entry) => (
             <Link
               key={entry.id}
-              href={`/journal/${toDateParam(entry.date)}`}
+              href={journalPath(entry.date, entry.id)}
               className="block border-b border-border pb-6 last:border-0"
             >
               <p className="font-serif text-xl">{formatLongDate(entry.date)}</p>

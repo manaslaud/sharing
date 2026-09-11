@@ -35,6 +35,7 @@ export type EditorSaveControls = {
 type Props = {
   documentId: string;
   kind: "note" | "journal";
+  journalDate?: string;
   title: string;
   content: JSONContent;
   placeholder?: string;
@@ -51,6 +52,7 @@ type Props = {
 export function DocumentEditor({
   documentId,
   kind,
+  journalDate,
   title,
   content,
   placeholder = "Start writing...",
@@ -105,7 +107,7 @@ export function DocumentEditor({
             payload:
               kind === "note"
                 ? { id: documentId, ...payload }
-                : { date: documentId, ...payload },
+                : { id: documentId, date: journalDate ?? documentId, ...payload },
             createdAt: new Date().toISOString(),
           });
           if (generation !== persistGeneration.current) return;
@@ -130,7 +132,7 @@ export function DocumentEditor({
             payload:
               kind === "note"
                 ? { id: documentId, ...payload }
-                : { date: documentId, ...payload },
+                : { id: documentId, date: journalDate ?? documentId, ...payload },
             createdAt: new Date().toISOString(),
           });
           if (generation !== persistGeneration.current) return;
@@ -145,7 +147,7 @@ export function DocumentEditor({
         if (inflightRef.current === work) inflightRef.current = null;
       }
     },
-    [documentId, kind, onSave, setStatus],
+    [documentId, journalDate, kind, onSave, setStatus],
   );
 
   const persistLatest = useRef(persistRef);

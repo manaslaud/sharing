@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/ui-extras";
 import { MonthCalendar } from "@/components/calendar/month-calendar";
 import { prisma } from "@/lib/db";
 import { journalAccessWhere, reminderAccessWhere } from "@/lib/authz";
-import { toDateParam } from "@/lib/dates";
+import { journalPath, toDateParam } from "@/lib/dates";
 import { occurrencesInRange } from "@/lib/recurrence";
 import { getSpaceContext } from "@/lib/session";
 
@@ -38,6 +38,7 @@ export default async function CalendarPage() {
         ...journalAccessWhere(ctx.userId, ctx.spaceIds),
         date: { gte: from, lte: to },
       },
+      include: { author: { select: { name: true } } },
     }),
   ]);
 
@@ -72,8 +73,8 @@ export default async function CalendarPage() {
     marker.journal = true;
     items.push({
       kind: "journal",
-      title: entry.title || "Journal",
-      href: `/journal/${date}`,
+      title: entry.title || entry.author.name || "Journal",
+      href: journalPath(date, entry.id),
       shared: entry.visibility === "SHARED",
     });
   }

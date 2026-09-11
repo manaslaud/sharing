@@ -11,6 +11,7 @@ import {
   canEditJournal,
   canShareJournal,
 } from "@/lib/authz";
+import { journalPath } from "@/lib/dates";
 import { getSpaceContext } from "@/lib/session";
 import {
   journalDateSchema,
@@ -46,13 +47,14 @@ export async function ensureJournalEntryAction(date: string) {
     where: { authorId_date: { authorId: ctx.userId, date: day } },
   });
 
+  let entryId = existing?.id;
   if (existing?.deletedAt) {
     await prisma.journalEntry.update({
       where: { id: existing.id },
       data: { deletedAt: null },
     });
   } else if (!existing) {
-    await prisma.journalEntry.create({
+    const created = await prisma.journalEntry.create({
       data: {
         date: day,
         title: "",
@@ -61,9 +63,10 @@ export async function ensureJournalEntryAction(date: string) {
         authorId: ctx.userId,
       },
     });
+    entryId = created.id;
   }
 
-  redirect(`/journal/${parsed.data}`);
+  redirect(journalPath(parsed.data, entryId));
 }
 
 export async function writeJournalFormAction(formData: FormData) {
@@ -77,32 +80,23 @@ export async function updateJournalAction(input: unknown) {
   }
 
   const ctx = await getSpaceContext();
-  const day = parseDate(parsed.data.date);
+  const day = parsed.data.date ? parseDate(parsed.data.date) : null;
   const byId = parsed.data.id
     ? await prisma.journalEntry.findUnique({ where: { id: parsed.data.id } })
     : null;
   const entry =
     byId ??
-    (await prisma.journalEntry.findUnique({
-      where: { authorId_date: { authorId: ctx.userId, date: day } },
-    }));
+    (day
+      ? await prisma.journalEntry.findUnique({
+          where: { authorId_date: { authorId: ctx.userId, date: day } },
+        })
+      : null);
 
-  const target =
-    entry && canEditJournal(entry, ctx.userId, ctx.spaceIds)
-      ? entry
-      : await prisma.journalEntry.findFirst({
-          where: {
-            date: day,
-            visibility: "SHARED",
-            sharedSpaceId: { in: ctx.spaceIds },
-            deletedAt: null,
-          },
-        });
-
-  if (!target || !canEditJournal(target, ctx.userId, ctx.spaceIds)) {
+  if (!entry || !canEditJournal(entry, ctx.userId, ctx.spaceIds)) {
     return { ok: false as const, error: "You can't edit this entry." };
   }
 
+  const target = entry;
   const nextTitle = parsed.data.title ?? target.title;
   const nextContent = (parsed.data.content ??
     target.content) as Prisma.InputJsonValue;
@@ -137,7 +131,7 @@ export async function updateJournalAction(input: unknown) {
         actorId: ctx.userId,
         actorName: ctx.user.name ?? "Someone",
         kind: "journal",
-        title: nextTitle || parsed.data.date,
+        title: nextTitle || parsed.data.date || "Journal entry",
         journalEntryId: target.id,
       });
     }

@@ -3,20 +3,26 @@ import { PageHeader, EmptyState } from "@/components/ui-extras";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { prisma } from "@/lib/db";
 import { getSpaceContext } from "@/lib/session";
-import { formatRelative } from "@/lib/dates";
+import { formatRelative, journalPath, toDateParam } from "@/lib/dates";
 import {
   markAllNotificationsReadAction,
   markNotificationReadAction,
 } from "@/lib/actions/notifications";
 
-function hrefFor(item: {
-  noteId: string | null;
-  journalEntryId: string | null;
-  reminderId: string | null;
-  eventId: string | null;
-}) {
+function hrefFor(
+  item: {
+    noteId: string | null;
+    journalEntryId: string | null;
+    reminderId: string | null;
+    eventId: string | null;
+  },
+  journalDates: Map<string, string>,
+) {
   if (item.noteId) return `/notes/${item.noteId}`;
-  if (item.journalEntryId) return `/journal`;
+  if (item.journalEntryId) {
+    const date = journalDates.get(item.journalEntryId);
+    return date ? journalPath(date, item.journalEntryId) : "/journal";
+  }
   if (item.eventId) return "/calendar";
   return "/";
 }
@@ -28,6 +34,22 @@ export default async function NotificationsPage() {
     orderBy: { createdAt: "desc" },
     take: 50,
   });
+  const journalIds = [
+    ...new Set(
+      notifications
+        .map((item) => item.journalEntryId)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  const journalEntries = journalIds.length
+    ? await prisma.journalEntry.findMany({
+        where: { id: { in: journalIds } },
+        select: { id: true, date: true },
+      })
+    : [];
+  const journalDates = new Map(
+    journalEntries.map((entry) => [entry.id, toDateParam(entry.date)]),
+  );
   const hasUnread = notifications.some((item) => !item.readAt);
 
   return (
@@ -58,7 +80,7 @@ export default async function NotificationsPage() {
                 item.readAt ? "bg-card" : "bg-accent"
               }`}
             >
-              <Link href={hrefFor(item)} className="min-w-0 flex-1">
+              <Link href={hrefFor(item, journalDates)} className="min-w-0 flex-1">
                 <p className="font-medium">{item.title}</p>
                 {item.body ? (
                   <p className="text-sm text-muted-foreground">{item.body}</p>

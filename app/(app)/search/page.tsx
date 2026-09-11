@@ -3,7 +3,7 @@ import { PageHeader, VisibilityBadge } from "@/components/ui-extras";
 import { SearchForm } from "@/components/search/search-form";
 import { searchContent } from "@/lib/actions/search";
 import { previewText } from "@/lib/content";
-import { formatLongDate, toDateParam } from "@/lib/dates";
+import { formatLongDate, journalPath } from "@/lib/dates";
 
 export default async function SearchPage({
   searchParams,
@@ -50,7 +50,7 @@ export default async function SearchPage({
           {result.journal.map((entry) => (
             <Link
               key={entry.id}
-              href={`/journal/${toDateParam(entry.date)}`}
+              href={journalPath(entry.date, entry.id)}
               className="rounded-2xl border bg-card px-4 py-3"
             >
               <div className="flex items-center justify-between">

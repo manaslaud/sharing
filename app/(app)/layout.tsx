@@ -1,7 +1,7 @@
 import { AppShell } from "@/components/app-shell";
 import { PushKeepAlive } from "@/components/push-keep-alive";
 import { prisma } from "@/lib/db";
-import { formatLongDate, toDateParam } from "@/lib/dates";
+import { formatLongDate, journalPath } from "@/lib/dates";
 import { journalAccessWhere, noteAccessWhere } from "@/lib/authz";
 import { getSpaceContext } from "@/lib/session";
 
@@ -52,7 +52,7 @@ export default async function AppLayout({
     ...recentJournal.map((entry) => ({
       id: entry.id,
       title: entry.title || formatLongDate(entry.date),
-      href: `/journal/${toDateParam(entry.date)}`,
+      href: journalPath(entry.date, entry.id),
       updatedAt: entry.updatedAt,
     })),
   ]

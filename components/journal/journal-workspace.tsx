@@ -60,8 +60,9 @@ export function JournalWorkspace({
       <p className="mb-4 font-serif text-2xl">{formatLongDate(date)}</p>
       <JournalDateNav date={date} datesWithEntries={datesWithEntries} />
       <DocumentEditor
-        documentId={date}
+        documentId={entry.id}
         kind="journal"
+        journalDate={date}
         title={title}
         content={entry.content as JSONContent}
         placeholder="Today was..."

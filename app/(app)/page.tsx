@@ -3,7 +3,7 @@ import { startOfDay } from "date-fns";
 import { EmptyState, PageHeader, VisibilityBadge } from "@/components/ui-extras";
 import { prisma } from "@/lib/db";
 import { journalAccessWhere, noteAccessWhere, reminderAccessWhere } from "@/lib/authz";
-import { formatLongDate, toDateParam } from "@/lib/dates";
+import { formatLongDate, journalPath } from "@/lib/dates";
 import { greetingForHour, hourInTimeZone } from "@/lib/names";
 import { previewText } from "@/lib/content";
 import { previousOccurrence, upcomingOccurrence } from "@/lib/recurrence";
@@ -107,7 +107,7 @@ export default async function HomePage() {
       preview: previewText(note.content, 90),
     })),
     ...recentJournal.map((entry) => ({
-      href: `/journal/${toDateParam(entry.date)}`,
+      href: journalPath(entry.date, entry.id),
       title: entry.title || formatLongDate(entry.date),
       kind: entry.visibility === "SHARED" ? "shared-journal" : "journal",
       updatedAt: entry.updatedAt,

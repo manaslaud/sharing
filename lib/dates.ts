@@ -32,3 +32,9 @@ export function toDateParam(date: Date) {
 export function fromDateParam(value: string) {
   return parseISO(`${value}T00:00:00`);
 }
+
+export function journalPath(date: string | Date, entryId?: string) {
+  const day = typeof date === "string" ? date : toDateParam(date);
+  if (!entryId) return `/journal/${day}`;
+  return `/journal/${day}?entry=${encodeURIComponent(entryId)}`;
+}

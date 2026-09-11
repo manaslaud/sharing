@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/db";
 import { canAccessJournal, journalAccessWhere } from "@/lib/authz";
-import { toDateParam } from "@/lib/dates";
+import { journalPath, toDateParam } from "@/lib/dates";
 import { getSpaceContext } from "@/lib/session";
 import { JournalWorkspace } from "@/components/journal/journal-workspace";
 import { writeJournalFormAction } from "@/lib/actions/journal";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { VisibilityBadge } from "@/components/ui-extras";
+import { cn } from "@/lib/utils";
 import Link from "next/link";
 
 export default async function JournalDatePage({
@@ -26,6 +27,12 @@ export default async function JournalDatePage({
       date: day,
     },
     include: { author: { select: { id: true, name: true } } },
+  });
+
+  entries.sort((a, b) => {
+    if (a.authorId === ctx.userId) return -1;
+    if (b.authorId === ctx.userId) return 1;
+    return (a.author.name ?? "").localeCompare(b.author.name ?? "");
   });
 
   const selected =
@@ -62,8 +69,11 @@ export default async function JournalDatePage({
           {entries.map((item) => (
             <Link
               key={item.id}
-              href={`/journal/${date}?entry=${item.id}`}
-              className="rounded-full border px-3 py-1 text-xs"
+              href={journalPath(date, item.id)}
+              className={cn(
+                "rounded-full border px-3 py-1 text-xs",
+                item.id === selected.id && "border-primary bg-accent",
+              )}
             >
               {item.author.name}{" "}
               <VisibilityBadge visibility={item.visibility} />
@@ -72,6 +82,7 @@ export default async function JournalDatePage({
         </div>
       )}
       <JournalWorkspace
+        key={selected.id}
         date={date}
         datesWithEntries={allDates.map((item) => toDateParam(item.date))}
         entry={selected}

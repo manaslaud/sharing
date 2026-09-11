@@ -3,7 +3,7 @@ import { EmptyState, PageHeader, VisibilityBadge } from "@/components/ui-extras"
 import { prisma } from "@/lib/db";
 import { getSpaceContext } from "@/lib/session";
 import { previewText } from "@/lib/content";
-import { formatLongDate, toDateParam } from "@/lib/dates";
+import { formatLongDate, journalPath } from "@/lib/dates";
 
 export default async function SharedPage() {
   const ctx = await getSpaceContext();
@@ -29,6 +29,7 @@ export default async function SharedPage() {
 
   const items = [
     ...notes.map((note) => ({
+      id: note.id,
       href: `/notes/${note.id}`,
       title: note.title || "Untitled note",
       kind: "note" as const,
@@ -36,7 +37,8 @@ export default async function SharedPage() {
       updatedAt: note.updatedAt,
     })),
     ...journal.map((entry) => ({
-      href: `/journal/${toDateParam(entry.date)}`,
+      id: entry.id,
+      href: journalPath(entry.date, entry.id),
       title: entry.title || formatLongDate(entry.date),
       kind: "journal" as const,
       preview: previewText(entry.content),
@@ -63,7 +65,7 @@ export default async function SharedPage() {
         <div className="grid gap-2">
           {items.map((item) => (
             <Link
-              key={item.href}
+              key={item.id}
               href={item.href}
               className="rounded-2xl border bg-card px-4 py-3"
             >

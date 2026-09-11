@@ -248,7 +248,11 @@ export async function restoreNoteRevisionAction(noteId: string, revisionId: stri
   });
 
   revalidatePath(`/notes/${note.id}`);
-  return { ok: true as const };
+  return {
+    ok: true as const,
+    title: revision.title,
+    content: revision.content,
+  };
 }
 
 export async function setNoteTagsAction(input: unknown) {

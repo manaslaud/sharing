@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { MutableRefObject } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
@@ -22,10 +23,14 @@ import {
   Link2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { cacheDocument, enqueueJob, saveDraft } from "@/lib/offline";
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error" | "offline";
+
+export type EditorSaveControls = {
+  pause: () => Promise<void>;
+  resume: () => void;
+};
 
 type Props = {
   documentId: string;
@@ -40,6 +45,7 @@ type Props = {
   }) => Promise<{ ok: boolean }>;
   status: SaveStatus;
   setStatus: (status: SaveStatus) => void;
+  saveControlsRef?: MutableRefObject<EditorSaveControls | null>;
 };
 
 export function DocumentEditor({
@@ -52,8 +58,13 @@ export function DocumentEditor({
   onSave,
   status,
   setStatus,
+  saveControlsRef,
 }: Props) {
   const [localTitle, setLocalTitle] = useState(title);
+  const persistGeneration = useRef(0);
+  const timeoutRef = useRef<number | undefined>(undefined);
+  const inflightRef = useRef<Promise<void> | null>(null);
+  const savePausedRef = useRef(false);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -78,74 +89,120 @@ export function DocumentEditor({
 
   const persistRef = useCallback(
     async (nextTitle: string, nextContent: JSONContent) => {
-      const payload = { title: nextTitle, content: nextContent };
-      await saveDraft(documentId, payload);
-      await cacheDocument(documentId, payload);
+      const generation = persistGeneration.current;
+      const work = (async () => {
+        if (generation !== persistGeneration.current) return;
 
-      if (typeof navigator !== "undefined" && !navigator.onLine) {
-        await enqueueJob({
-          id: documentId,
-          kind,
-          payload:
-            kind === "note"
-              ? { id: documentId, ...payload }
-              : { date: documentId, ...payload },
-          createdAt: new Date().toISOString(),
-        });
-        setStatus("offline");
-        return;
-      }
+        const payload = { title: nextTitle, content: nextContent };
+        await saveDraft(documentId, payload);
+        await cacheDocument(documentId, payload);
+        if (generation !== persistGeneration.current) return;
 
-      setStatus("saving");
-      try {
-        const result = await onSave(payload);
-        if (result.ok) {
-          setStatus("saved");
-        } else {
+        if (typeof navigator !== "undefined" && !navigator.onLine) {
+          await enqueueJob({
+            id: documentId,
+            kind,
+            payload:
+              kind === "note"
+                ? { id: documentId, ...payload }
+                : { date: documentId, ...payload },
+            createdAt: new Date().toISOString(),
+          });
+          if (generation !== persistGeneration.current) return;
+          setStatus("offline");
+          return;
+        }
+
+        setStatus("saving");
+        try {
+          const result = await onSave(payload);
+          if (generation !== persistGeneration.current) return;
+          if (result.ok) {
+            setStatus("saved");
+          } else {
+            setStatus("error");
+          }
+        } catch {
+          if (generation !== persistGeneration.current) return;
+          await enqueueJob({
+            id: documentId,
+            kind,
+            payload:
+              kind === "note"
+                ? { id: documentId, ...payload }
+                : { date: documentId, ...payload },
+            createdAt: new Date().toISOString(),
+          });
+          if (generation !== persistGeneration.current) return;
           setStatus("error");
         }
-      } catch {
-        await enqueueJob({
-          id: documentId,
-          kind,
-          payload:
-            kind === "note"
-              ? { id: documentId, ...payload }
-              : { date: documentId, ...payload },
-          createdAt: new Date().toISOString(),
-        });
-        setStatus("error");
+      })();
+
+      inflightRef.current = work;
+      try {
+        await work;
+      } finally {
+        if (inflightRef.current === work) inflightRef.current = null;
       }
     },
     [documentId, kind, onSave, setStatus],
   );
 
   const persistLatest = useRef(persistRef);
-  persistLatest.current = persistRef;
+  useEffect(() => {
+    persistLatest.current = persistRef;
+  }, [persistRef]);
+
+  const clearScheduledPersist = useCallback(() => {
+    if (timeoutRef.current !== undefined) {
+      window.clearTimeout(timeoutRef.current);
+      timeoutRef.current = undefined;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!saveControlsRef) return undefined;
+    saveControlsRef.current = {
+      pause: async () => {
+        savePausedRef.current = true;
+        persistGeneration.current += 1;
+        clearScheduledPersist();
+        if (inflightRef.current) await inflightRef.current;
+      },
+      resume: () => {
+        savePausedRef.current = false;
+      },
+    };
+    return () => {
+      saveControlsRef.current = null;
+    };
+  }, [clearScheduledPersist, saveControlsRef]);
 
   useEffect(() => {
     if (!editor) return undefined;
-    let handle: number | undefined;
     const schedule = () => {
-      if (handle) window.clearTimeout(handle);
-      handle = window.setTimeout(() => {
+      if (savePausedRef.current) return;
+      clearScheduledPersist();
+      timeoutRef.current = window.setTimeout(() => {
         persistLatest.current(localTitle, editor.getJSON() as JSONContent);
       }, 800);
     };
     editor.on("update", schedule);
     return () => {
       editor.off("update", schedule);
-      if (handle) window.clearTimeout(handle);
+      clearScheduledPersist();
     };
-  }, [editor, localTitle]);
+  }, [clearScheduledPersist, editor, localTitle]);
 
   useEffect(() => {
     if (!editor) return undefined;
-    const handle = window.setTimeout(() => {
+    if (savePausedRef.current) return undefined;
+    clearScheduledPersist();
+    timeoutRef.current = window.setTimeout(() => {
       persistLatest.current(localTitle, editor.getJSON() as JSONContent);
     }, 800);
-    return () => window.clearTimeout(handle);
-  }, [editor, localTitle]);
+    return () => clearScheduledPersist();
+  }, [clearScheduledPersist, editor, localTitle]);
 
   const setLink = useCallback(() => {
     if (!editor) return;

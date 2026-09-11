@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { NoteWorkspace } from "@/components/notes/note-workspace";
 import { prisma } from "@/lib/db";
 import { canAccessNote } from "@/lib/authz";
+import { extractText, previewText, summarizeRevisionChange } from "@/lib/content";
 import { getSpaceContext } from "@/lib/session";
 
 export default async function NotePage({
@@ -40,13 +41,40 @@ export default async function NotePage({
     }),
   ]);
 
+  const currentState = {
+    title: note.title,
+    text: extractText(note.content),
+  };
+  const revisionItems = revisions.map((revision, index) => {
+    const later =
+      index === 0
+        ? currentState
+        : {
+            title: revisions[index - 1].title,
+            text: extractText(revisions[index - 1].content),
+          };
+    return {
+      id: revision.id,
+      title: revision.title,
+      preview: previewText(revision.content) || "Empty note",
+      change: summarizeRevisionChange(
+        { title: revision.title, text: extractText(revision.content) },
+        later,
+        index === 0 ? "current" : "next",
+      ),
+      createdAt: revision.createdAt,
+      editor: revision.editor,
+      content: revision.content,
+    };
+  });
+
   return (
     <NoteWorkspace
       note={note}
       partnerName={ctx.partner?.name}
       currentUserId={ctx.userId}
       activities={activities}
-      revisions={revisions}
+      revisions={revisionItems}
       suggestedTags={suggestedTags.map((tag) => tag.name)}
     />
   );

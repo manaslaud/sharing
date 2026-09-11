@@ -1,10 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { JSONContent } from "@tiptap/react";
 import { Archive, Pin, Trash2 } from "lucide-react";
-import { DocumentEditor, type SaveStatus } from "@/components/editor/document-editor";
+import { DocumentEditor, type EditorSaveControls, type SaveStatus } from "@/components/editor/document-editor";
+import {
+  NoteVersionHistory,
+  type VersionHistoryItem,
+} from "@/components/notes/note-version-history";
 import { ShareToggle } from "@/components/share-toggle";
 import { TagPicker } from "@/components/tags/tag-picker";
 import { BackLink } from "@/components/ui-extras";
@@ -28,11 +32,8 @@ type Activity = {
   actor: { id: string; name: string };
 };
 
-type Revision = {
-  id: string;
-  title: string;
-  createdAt: Date;
-  editor: { id: string; name: string };
+type Revision = VersionHistoryItem & {
+  content: unknown;
 };
 
 export function NoteWorkspace({
@@ -61,12 +62,26 @@ export function NoteWorkspace({
 }) {
   const router = useRouter();
   const [title, setTitle] = useState(note.title);
+  const [editorContent, setEditorContent] = useState(
+    note.content as JSONContent,
+  );
+  const [editorKey, setEditorKey] = useState(0);
   const [status, setStatus] = useState<SaveStatus>("idle");
   const { pending: pinning, run: runPin } = usePendingAction();
   const { pending: archiving, run: runArchive } = usePendingAction();
   const { pending: restoring, run: runRestore } = usePendingAction();
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  const saveControlsRef = useRef<EditorSaveControls | null>(null);
+  const loadedNoteId = useRef(note.id);
   const toolbarBusy = pinning || archiving;
+
+  useEffect(() => {
+    if (loadedNoteId.current === note.id) return;
+    loadedNoteId.current = note.id;
+    setTitle(note.title);
+    setEditorContent(note.content as JSONContent);
+    setEditorKey((key) => key + 1);
+  }, [note.id, note.title, note.content]);
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-3xl flex-col px-4 py-4 md:px-8">
@@ -120,14 +135,16 @@ export function NoteWorkspace({
       </div>
 
       <DocumentEditor
+        key={`${note.id}-${editorKey}`}
         documentId={note.id}
         kind="note"
         title={title}
-        content={note.content as JSONContent}
+        content={editorContent}
         onTitleChange={setTitle}
         status={status}
         setStatus={setStatus}
         onSave={(payload) => updateNoteAction({ id: note.id, ...payload })}
+        saveControlsRef={saveControlsRef}
       />
 
       <div className="mt-4">
@@ -139,8 +156,8 @@ export function NoteWorkspace({
       </div>
 
       {note.visibility === "SHARED" && (
-        <div className="mt-8 grid gap-6 pb-10 md:grid-cols-2">
-          <section>
+        <>
+          <section className="mt-8">
             <h2 className="mb-3 text-sm font-medium uppercase tracking-wide text-muted-foreground">
               Activity
             </h2>
@@ -157,42 +174,33 @@ export function NoteWorkspace({
               )}
             </div>
           </section>
-          <section>
-            <h2 className="mb-3 text-sm font-medium uppercase tracking-wide text-muted-foreground">
-              Version history
-            </h2>
-            <div className="grid gap-2 text-sm">
-              {revisions.length === 0 ? (
-                <p className="text-muted-foreground">No previous versions yet.</p>
-              ) : (
-                revisions.map((revision) => (
-                  <div key={revision.id} className="flex items-center justify-between gap-2">
-                    <p>
-                      {formatRelative(revision.createdAt)} ·{" "}
-                      {revision.editor.id === currentUserId
-                        ? "you"
-                        : revision.editor.name}
-                    </p>
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      loading={restoring && restoringId === revision.id}
-                      disabled={restoring}
-                      onClick={() => {
-                        setRestoringId(revision.id);
-                        runRestore(() =>
-                          restoreNoteRevisionAction(note.id, revision.id),
-                        );
-                      }}
-                    >
-                      Restore
-                    </Button>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
-        </div>
+          <NoteVersionHistory
+            currentUserId={currentUserId}
+            revisions={revisions}
+            restoringId={restoringId}
+            restoring={restoring}
+            onRestore={(revisionId) => {
+              setRestoringId(revisionId);
+              runRestore(async () => {
+                await saveControlsRef.current?.pause();
+                const result = await restoreNoteRevisionAction(
+                  note.id,
+                  revisionId,
+                );
+                if (result.ok) {
+                  setTitle(result.title);
+                  setEditorContent(result.content as JSONContent);
+                  setStatus("saved");
+                  setEditorKey((key) => key + 1);
+                  router.refresh();
+                } else {
+                  saveControlsRef.current?.resume();
+                }
+                setRestoringId(null);
+              });
+            }}
+          />
+        </>
       )}
     </div>
   );
